@@ -4,8 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "maptor"
-version = "0.0.1"
-description = "Multiphase Adaptive Trajectory Optimizer - Name Reserved"
+
+version = "0.0.3"
+
+description = "Multiphase Adaptive Trajectory Optimizer"
+
 authors = [{name = "David Timothy"}]
 readme = "README.md"
 requires-python = ">=3.10"

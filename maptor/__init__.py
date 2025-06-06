@@ -1,4 +1,4 @@
-__version__ = "0.0.1"
+__version__ = "0.0.3"
 __author__ = "David Timothy"
 __description__ = "Multiphase Adaptive Trajectory Optimizer"
 
