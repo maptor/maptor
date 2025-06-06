@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maptor"
+version = "0.0.1"
+description = "Multiphase Adaptive Trajectory Optimizer - Name Reserved"
+authors = [{name = "David Timothy"}]
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+keywords = ["optimal control", "trajectory optimization", "collocation", "pseudospectral methods", "robotics", "aerospace"]
+dependencies = []
+
+[project.urls]
+"Homepage" = "https://github.com/ChenDavidTimothy/maptor"
+"Repository" = "https://github.com/ChenDavidTimothy/maptor"
+"Issues" = "https://github.com/ChenDavidTimothy/maptor/issues"
