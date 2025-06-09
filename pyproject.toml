@@ -26,6 +26,6 @@ keywords = ["optimal control", "trajectory optimization", "collocation", "pseudo
 dependencies = []
 
 [project.urls]
-"Homepage" = "https://github.com/ChenDavidTimothy/maptor"
-"Repository" = "https://github.com/ChenDavidTimothy/maptor"
-"Issues" = "https://github.com/ChenDavidTimothy/maptor/issues"
+"Homepage" = "https://github.com/maptor/maptor"
+"Repository" = "https://github.com/maptor/maptor"
+"Issues" = "https://github.com/maptor/maptor/issues"

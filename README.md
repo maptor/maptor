@@ -6,5 +6,5 @@ MAPTOR will be a Python framework for solving optimal control problems.
 
 ## Repository
 
-Development repository: https://github.com/ChenDavidTimothy/maptor
+Development repository: https://github.com/maptor/maptor
 

@@ -147,7 +147,7 @@ class ReleaseManager:
         self.create_release_commit_and_tag(version)
         
         print(f"""
-🎉 Release v{version} prepared successfully!
+Release v{version} prepared successfully!
 
 Next steps:
 1. Push to GitHub (this will trigger PyPI release):
