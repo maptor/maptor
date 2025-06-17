@@ -4,7 +4,7 @@
 
 # MAPTOR: Multiphase Adaptive Trajectory Optimizer
 
-[![PyPI version](https://badge.fury.io/py/maptor.svg)](https://badge.fury.io/py/maptor)
+[![PyPI version](https://img.shields.io/pypi/v/maptor)](https://pypi.org/project/maptor/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
