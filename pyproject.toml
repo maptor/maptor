@@ -49,7 +49,7 @@ dev = [
 line-length = 100
 
 # Python version targets
-target-version = "py311"
+target-version = "0.1.0"
 
 # Include/exclude patterns
 include = ["*.py", "*.pyi"]
