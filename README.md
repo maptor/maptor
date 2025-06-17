@@ -95,7 +95,7 @@ The examples gallery demonstrates trajectory optimization across multiple domain
 - **[Low-Thrust Orbit Transfer](https://maptor.github.io/maptor/examples/low_thrust_orbit_transfer.html)**: Orbital mechanics with J2/J3/J4 gravitational perturbations and modified equinoctial elements
 - **[Multiphase Vehicle Launch](https://maptor.github.io/maptor/examples/multiphase_vehicle_launch.html)**: Realistic rocket trajectory with stage separations and orbital insertion
 - **[Shuttle Reentry](https://maptor.github.io/maptor/examples/shuttle_reentry.html)**: Atmospheric entry with heat rate constraints and crossrange maximization
-- **[Aero-Assisted Plane Change](https://maptor.github.io/maptor/examples/aero-assisted_plane_change.html)**: Atmospheric maneuvers for orbital inclination change
+- **[Aero-Assisted Plane Change](https://maptor.github.io/maptor/examples/aero_assisted_plane_change.html)**: Atmospheric maneuvers for orbital inclination change
 
 ### Advanced Robotics and Control
 - **[Quadcopter Flight](https://maptor.github.io/maptor/examples/quadcopter.html)**: Quadcopter dynamics with obstacle avoidance
@@ -107,7 +107,7 @@ The examples gallery demonstrates trajectory optimization across multiple domain
 - **[Hang Glider Flight](https://maptor.github.io/maptor/examples/hang_glider.html)**: Thermal soaring optimization with atmospheric updrafts
 
 ### Interdisciplinary Applications
-- **[Two-Strain Tuberculosis Model](https://maptor.github.io/maptor/examples/two-strain_tuberculosis_model.html)**: Epidemiological optimal control with drug resistance dynamics
+- **[Two-Strain Tuberculosis Model](https://maptor.github.io/maptor/examples/two_strain_tuberculosis_model.html)**: Epidemiological optimal control with drug resistance dynamics
 
 ### Benchmark and Classical Problems
 - **[Hypersensitive Problem](https://maptor.github.io/maptor/examples/hypersensitive.html)**: Challenging optimal control benchmark with sensitive dynamics
