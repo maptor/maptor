@@ -49,7 +49,7 @@ dev = [
 line-length = 100
 
 # Python version targets
-target-version = "py310"
+target-version = "0.1.0"
 
 # Include/exclude patterns
 include = ["*.py", "*.pyi"]
@@ -150,7 +150,7 @@ line-ending = "auto"
 # ============================================================================
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "0.1.0"
 
 # Core type checking
 warn_return_any = true

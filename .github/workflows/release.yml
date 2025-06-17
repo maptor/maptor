@@ -4,11 +4,11 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch: 
+  workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write 
+  id-token: write
 
 jobs:
   validate-release:
@@ -25,7 +25,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11' 
+        python-version: '3.11'
 
     - name: Get version information
       id: get-version
@@ -33,10 +33,10 @@ jobs:
         # Extract version from pyproject.toml
         PROJECT_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
         TAG_VERSION=${GITHUB_REF#refs/tags/v}
-        
+
         echo "version=$PROJECT_VERSION" >> $GITHUB_OUTPUT
         echo "tag-version=$TAG_VERSION" >> $GITHUB_OUTPUT
-        
+
         echo "Project version: $PROJECT_VERSION"
         echo "Tag version: $TAG_VERSION"
 
@@ -57,11 +57,11 @@ jobs:
         python -c "
         import requests
         import sys
-        
+
         version = '${{ steps.get-version.outputs.version }}'
         url = f'https://pypi.org/pypi/maptor/{version}/json'
         response = requests.get(url)
-        
+
         if response.status_code == 200:
             print(f'Version {version} already exists on PyPI!')
             sys.exit(1)
@@ -90,10 +90,10 @@ jobs:
       run: |
         echo "Building package..."
         python -m build
-        
+
         echo "Build artifacts:"
         ls -la dist/
-        
+
         echo "Package info:"
         twine check dist/*
 
@@ -122,18 +122,17 @@ jobs:
       run: |
         echo "Testing package installation..."
         pip install dist/*.whl
-        
+
         echo "Testing import:"
         python -c "
         import maptor
         print(f'✓ MAPTOR version: {maptor.__version__}')
-        print(f'✓ Status: {maptor.status()}')
         "
 
   publish-to-pypi:
     needs: [validate-release, build, test-package]
     runs-on: ubuntu-latest
-    environment: pypi  
+    environment: pypi
     steps:
     - name: Download build artifacts
       uses: actions/download-artifact@v4
@@ -151,7 +150,7 @@ jobs:
       run: |
         echo "Waiting for PyPI propagation..."
         sleep 30
-        
+
         pip install maptor==${{ needs.validate-release.outputs.version }}
         python -c "
         import maptor
@@ -176,19 +175,19 @@ jobs:
         release_name: MAPTOR v${{ needs.validate-release.outputs.version }}
         body: |
           ## MAPTOR v${{ needs.validate-release.outputs.version }}
-          
+
           **Installation:**
           ```bash
           pip install maptor==${{ needs.validate-release.outputs.version }}
           ```
-          
+
           **Changes:**
           - See commit history for detailed changes
-          
+
           **Verification:**
           ```python
           import maptor
-          print(maptor.__version__)  
+          print(maptor.__version__)
           ```
         draft: false
         prerelease: false

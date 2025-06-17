@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
       run: |
         echo "Testing package build (NO PyPI publish)..."
         python -m build
-        
+
         echo "Build successful:"
         ls -la dist/
 
@@ -42,12 +42,11 @@ jobs:
       run: |
         echo "Testing local installation..."
         pip install dist/*.whl
-        
+
         python -c "
         import maptor
         print(f'MAPTOR imported successfully')
         print(f'   Version: {maptor.__version__}')
-        print(f'   Status: {maptor.status()}')
         "
 
     - name: Show proof this is NOT a release
@@ -77,6 +76,6 @@ jobs:
       run: |
         echo "Running code quality checks..."
         ruff check . || echo "Linting issues found (non-blocking for now)"
-        
+
         echo "Checking basic Python syntax..."
         python -m py_compile maptor/__init__.py

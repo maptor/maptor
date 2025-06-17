@@ -78,10 +78,13 @@ class ReleaseManager:
 
     def create_release_commit_and_tag(self, version: str) -> None:
         subprocess.run(
-            [self.git_executable, "add", str(self.pyproject_path), str(self.init_path)], check=True
+            [self.git_executable, "add", str(self.pyproject_path), str(self.init_path)],
+            check=True,
         )
 
-        subprocess.run([self.git_executable, "commit", "-m", f"Release v{version}"], check=True)
+        subprocess.run(
+            [self.git_executable, "commit", "-m", f"Release v{version}"], check=True
+        )
 
         subprocess.run([self.git_executable, "tag", f"v{version}"], check=True)
 
@@ -110,7 +113,9 @@ class ReleaseManager:
             if response.status_code == 200:
                 print(f"   PyPI status: Version {current_version} EXISTS on PyPI")
             else:
-                print(f"   PyPI status: Version {current_version} NOT on PyPI (ready to publish)")
+                print(
+                    f"   PyPI status: Version {current_version} NOT on PyPI (ready to publish)"
+                )
         except ImportError:
             print("   PyPI status: Install 'requests' to check PyPI status")
         except requests.exceptions.RequestException as e:
@@ -139,7 +144,7 @@ Next steps:
    git push origin main --tags
 
 2. Monitor the release workflow:
-   https://github.com/YOUR_USERNAME/maptor/actions
+   https://github.com/maptor/maptor/actions
 
 3. Verify on PyPI (after workflow completes):
    https://pypi.org/project/maptor/{version}/
