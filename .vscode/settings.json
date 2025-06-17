@@ -1,0 +1,142 @@
+{
+    // ========================================================================
+    // PYTHON CONFIGURATION (Fixed paths)
+    // ========================================================================
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.stubPath": "${workspaceFolder}/typings",
+    "python.analysis.indexing": true,
+
+    // Ignore missing stubs for scientific libraries
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingTypeStubs": "none",
+        "reportGeneralTypeIssues": "information",
+        "reportOptionalMemberAccess": "information"
+    },
+
+    // OR if you want to be more specific, only ignore certain modules:
+    // "python.analysis.diagnosticSeverityOverrides": {
+    //     "reportMissingTypeStubs": "information"
+    // },
+    // "python.analysis.ignore": ["casadi"],
+
+    // ========================================================================
+    // RUFF CONFIGURATION (Updated for native server)
+    // ========================================================================
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+        }
+    },
+
+    // Ruff extension settings (new native server syntax)
+    "ruff.nativeServer": "auto",
+    "ruff.configurationPreference": "filesystemFirst",
+    "ruff.importStrategy": "useBundled",
+
+    // ========================================================================
+    // MYPY TYPE CHECKING (Updated configuration)
+    // ========================================================================
+    "mypy-type-checker.interpreter": ["${workspaceFolder}/.venv/Scripts/python.exe"],
+    "mypy-type-checker.args": ["--config-file", "${workspaceFolder}/pyproject.toml"],
+    "mypy-type-checker.reportingScope": "workspace",
+    "mypy-type-checker.preferDaemon": true,
+
+    // ========================================================================
+    // TESTING CONFIGURATION
+    // ========================================================================
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.testing.pytestArgs": [
+        ".",
+        "--verbose",
+        "--tb=short"
+    ],
+
+    // ========================================================================
+    // EDITOR SETTINGS
+    // ========================================================================
+    "editor.rulers": [100],
+    "editor.trimAutoWhitespace": true,
+    "editor.minimap.enabled": false,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": true,
+    "editor.inlineSuggest.enabled": true,
+    "editor.suggest.insertMode": "replace",
+
+    // ========================================================================
+    // FILE MANAGEMENT
+    // ========================================================================
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/.coverage": true,
+        "**/htmlcov": true,
+        "**/venv": true,
+        "**/.venv": true,
+        "**/build": true,
+        "**/dist": true,
+        "**/*.egg-info": true
+    },
+
+    // Search exclusions for better performance
+    "search.exclude": {
+        "**/venv": true,
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/build": true,
+        "**/dist": true
+    },
+
+    // ========================================================================
+    // GIT INTEGRATION
+    // ========================================================================
+    "gitlens.codeLens.enabled": true,
+    "gitlens.currentLine.enabled": true,
+    "git.autofetch": true,
+    "git.confirmSync": false,
+
+    // ========================================================================
+    // SCIENTIFIC COMPUTING SPECIFIC
+    // ========================================================================
+    // Performance optimizations
+    "python.analysis.packageIndexDepths": [
+        {"name": "", "depth": 2},
+        {"name": "numpy", "depth": 2},
+        {"name": "scipy", "depth": 2},
+        {"name": "casadi", "depth": 2}
+    ],
+
+    // Terminal settings
+    "python.terminal.executeInFileDir": false,
+    "terminal.integrated.cwd": "${workspaceFolder}",
+
+    // ========================================================================
+    // JUPYTER (Optional - only if using notebooks)
+    // ========================================================================
+    "jupyter.askForKernelRestart": false,
+    "jupyter.interactiveWindow.textEditor.executeSelection": true,
+
+    // ========================================================================
+    // MISCELLANEOUS
+    // ========================================================================
+    "explorer.confirmDelete": false,
+    "explorer.confirmDragAndDrop": false,
+    "workbench.startupEditor": "none"
+}

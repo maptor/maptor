@@ -1,0 +1,28 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+
+        "charliermarsh.ruff",
+
+        "ms-python.mypy-type-checker",
+
+        "ms-python.debugpy",
+
+        "eamodio.gitlens",
+
+        "ms-toolsai.jupyter",
+
+        "tamasfe.even-better-toml",
+
+        "usernamehw.errorlens"
+    ],
+    "unwantedRecommendations": [
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.flake8",
+
+        "njpwerner.autodocstring",
+        "autoDocstring.python-docstring-generator"
+    ]
+}

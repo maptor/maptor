@@ -4,28 +4,233 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "maptor"
-
-version = "0.0.4"
-
+version = "0.1.0"
 description = "Multiphase Adaptive Trajectory Optimizer"
-
 authors = [{name = "David Timothy"}]
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
+    "License :: OSI Approved :: LGPL v3",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-keywords = ["optimal control", "trajectory optimization", "collocation", "pseudospectral methods", "robotics", "aerospace"]
-dependencies = []
+keywords = ["control", "engineering", "optimization", "robotics", "aerospace", "autonomous", "trajectory", "planning", "numerical", "simulation"]
+dependencies = [
+    "numpy>=1.18.0",
+    "matplotlib>=3.1.0",
+    "scipy>=1.4.0",
+    "casadi>=3.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.3.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/maptor/maptor"
 "Repository" = "https://github.com/maptor/maptor"
 "Issues" = "https://github.com/maptor/maptor/issues"
+
+# ============================================================================
+# RUFF CONFIGURATION
+# ============================================================================
+
+[tool.ruff]
+# Line length to match your existing setup
+line-length = 100
+
+# Python version targets
+target-version = "py310"
+
+# Include/exclude patterns
+include = ["*.py", "*.pyi"]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+# ============================================================================
+# RUFF LINTING CONFIGURATION
+# ============================================================================
+
+[tool.ruff.lint]
+# Enable rule categories (matches your existing setup)
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes errors
+    "B",   # flake8-bugbear rules
+    "I",   # isort rules (import sorting)
+    "W",   # pycodestyle warnings
+    "C4",  # flake8-comprehensions
+    "N",   # pep8-naming
+    "UP",  # pyupgrade (modernize syntax)
+    "S",   # flake8-bandit (security)
+    "PT",  # flake8-pytest-style
+    "RUF", # Ruff-specific rules
+]
+
+# Ignore rules (matches your existing exceptions)
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+    "C901",  # Complex structure (your existing ignore)
+    "N803",  # Invalid argument name (scientific notation)
+    "N806",  # Variable in function should be lowercase (scientific)
+    "N815",  # Variable in class scope should not be mixedCase (scientific)
+    "S311",  # Pseudo-random generators not suitable for cryptographic purposes
+    "S101", # Use assert statements (allow in tests)
+    "RUF003",
+    "S603"
+]
+
+# Per-file ignores
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]        # Unused imports in __init__.py
+"tests/*" = ["S101", "S311"]    # Allow assert statements and random in tests
+"*/test_*.py" = ["S101", "S311"] # Same for test files
+
+# ============================================================================
+# IMPORT SORTING
+# ============================================================================
+
+[tool.ruff.lint.isort]
+# Known first-party packages
+known-first-party = ["maptor"]
+
+# Import sections
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder"
+]
+
+# Split on trailing comma
+split-on-trailing-comma = true
+
+# Force single line imports
+force-single-line = false
+
+# Lines after imports
+lines-after-imports = 2
+
+# ============================================================================
+# CODE FORMATTING
+# ============================================================================
+
+[tool.ruff.format]
+# Quote style
+quote-style = "double"
+
+# Indent style
+indent-style = "space"
+
+# Skip magic trailing comma
+skip-magic-trailing-comma = false
+
+# Line ending style
+line-ending = "auto"
+
+# ============================================================================
+# MYPY CONFIGURATION
+# ============================================================================
+
+[tool.mypy]
+python_version = "3.13"
+
+# Core type checking
+warn_return_any = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+warn_no_return = true
+warn_unreachable = true
+
+# Scientific computing accommodations
+disallow_untyped_defs = false  # Allow untyped functions for gradual adoption
+check_untyped_defs = true      # Still type check the bodies of untyped functions
+disallow_any_generics = false  # Needed for numpy compatibility
+disallow_subclassing_any = false # Needed for scientific libraries
+
+# Numerical safety features
+strict_optional = true         # Catch None-related errors (for scientific code)
+no_implicit_optional = true    # No implicit Optional in unions
+
+# Library handling
+ignore_missing_imports = true  # Ignore missing stubs for scientific libraries
+follow_imports = "silent"      # Don't complain about followed imports
+
+# Project organization
+exclude = [".venv", "venv", "build", "dist", "__pycache__"]
+
+# Per-module configuration for incremental typing
+[[tool.mypy.overrides]]
+module = ["maptor.utils", "maptor.radau"]  # Core numerical modules
+disallow_untyped_defs = true     # Enforce full typing in core modules
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = "maptor.adaptive.*"  # Complex algorithmic code
+disallow_untyped_defs = false      # More flexibility in complex adaptive code
+check_untyped_defs = true
+
+# ============================================================================
+# PYTEST CONFIGURATION
+# ============================================================================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--tb=short",
+    "--cov=maptor",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# ============================================================================
+# COVERAGE CONFIGURATION
+# ============================================================================
+
+[tool.coverage.run]
+source = ["maptor"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

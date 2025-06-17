@@ -1,0 +1,45 @@
+html[data-theme="light"] {
+    --pst-color-primary: #991b1b;
+    --pst-color-link: #991b1b;
+    --pst-color-link-hover: #7f1d1d;
+}
+
+html[data-theme="dark"] {
+    --pst-color-primary: #f87171;
+    --pst-color-link: #f87171;
+    --pst-color-link-hover: #fca5a5;
+}
+
+.btn-primary {
+    background-color: var(--pst-color-primary) !important;
+    border-color: var(--pst-color-primary) !important;
+    color: white !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--pst-color-link-hover) !important;
+    border-color: var(--pst-color-link-hover) !important;
+}
+
+.bd-sidebar .navbar-nav .nav-link.active {
+    color: var(--pst-color-primary) !important;
+    border-left: 2px solid var(--pst-color-primary);
+    padding-left: calc(1rem - 2px);
+}
+
+.table th {
+    background-color: var(--pst-color-primary) !important;
+    color: white !important;
+}
+
+.form-control:focus {
+    border-color: var(--pst-color-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(153, 27, 27, 0.25) !important;
+}
+
+.navbar-brand img {
+    height: 40px;
+    max-width: 200px;
+    object-fit: contain;
+}

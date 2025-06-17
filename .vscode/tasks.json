@@ -1,0 +1,117 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Ruff: Check",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "ruff", "check", "."],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Ruff: Fix (Safe)",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "ruff", "check", "--fix", "."],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Ruff: Fix (Unsafe)",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "ruff", "check", "--fix", "--unsafe-fixes", "."],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Ruff: Format",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "ruff", "format", "."],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "MyPy: Type Check",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "mypy", "--exclude", "build", "maptor"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run All Checks",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Ruff: Fix (Unsafe)",
+                "Ruff: Fix (Safe)",
+                "Ruff: Format",
+                "MyPy: Type Check"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Test: Run All",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "pytest"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Test: Run with Coverage",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "pytest", "--cov=trajectolab", "--cov-report=html"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

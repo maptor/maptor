@@ -1,0 +1,128 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'maptor/**'
+      - 'examples/**'
+      - 'docs/**'
+      - 'pyproject.toml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'maptor/**'
+      - 'examples/**'
+      - 'docs/**'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # First, install all dependencies from the single source of truth
+        pip install -r docs/requirements.txt
+        # Then, install the project itself without its dependencies
+        pip install --no-deps -e .
+
+    - name: Clean old documentation
+      run: |
+        cd docs
+        make clean
+        echo "✓ Cleaned previous documentation builds"
+
+    - name: Build documentation
+      run: |
+        cd docs
+        make html
+        echo "✓ API and examples documentation generated"
+        echo "✓ Documentation built successfully"
+
+    - name: Check documentation build
+      run: |
+        if [ -f docs/_build/html/index.html ]; then
+          echo "✓ Documentation HTML generated successfully"
+          echo "Generated pages:"
+          find docs/_build/html -name "*.html" | head -10
+
+          # Verify API documentation was generated
+          if [ -d docs/_build/html/api ]; then
+            echo "✓ API documentation included"
+            echo "Generated API modules:"
+            find docs/_build/html/api -name "*.html" | head -5
+          else
+            echo "API documentation directory not found"
+          fi
+
+          # Verify examples documentation was generated
+          if [ -d docs/_build/html/examples ]; then
+            echo "✓ Examples documentation included"
+            echo "Generated examples:"
+            find docs/_build/html/examples -name "*.html" | head -5
+
+            # Count examples
+            EXAMPLE_COUNT=$(find docs/_build/html/examples -name "*.html" -not -name "index.html" | wc -l)
+            echo "Total examples documented: $EXAMPLE_COUNT"
+          else
+            echo "Examples documentation directory not found"
+          fi
+
+          # Check for essential pages
+          if [ -f docs/_build/html/installation.html ]; then
+            echo "Installation guide included"
+          fi
+
+          if [ -f docs/_build/html/quickstart.html ]; then
+            echo "Quickstart guide included"
+          fi
+
+        else
+          echo "Documentation build failed - no index.html found"
+          exit 1
+        fi
+
+    - name: Upload pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/_build/html
+        name: github-pages
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      with:
+        artifact_name: github-pages
