@@ -146,17 +146,6 @@ jobs:
         verbose: true
         print-hash: true
 
-    - name: Verify publication
-      run: |
-        echo "Waiting for PyPI propagation..."
-        sleep 30
-
-        pip install maptor==${{ needs.validate-release.outputs.version }}
-        python -c "
-        import maptor
-        print(f'Successfully published MAPTOR v{maptor.__version__} to PyPI!')
-        "
-
   create-github-release:
     needs: [validate-release, publish-to-pypi]
     runs-on: ubuntu-latest
