@@ -2,9 +2,8 @@ import re
 import shutil
 import subprocess
 import sys
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 
 class ReleaseManager:
@@ -87,13 +86,20 @@ class ReleaseManager:
             check=True,
         )
 
-        subprocess.run(
-            [self.git_executable, "commit", "-m", f"Release v{version}"], check=True
+        # Check if there are staged changes
+        result = subprocess.run(
+            [self.git_executable, "diff", "--cached", "--quiet"], capture_output=True
         )
 
-        subprocess.run([self.git_executable, "tag", f"v{version}"], check=True)
+        if result.returncode != 0:
+            # There are changes, commit them
+            subprocess.run([self.git_executable, "commit", "-m", f"Release v{version}"], check=True)
+            print(f"Created release commit for v{version}")
+        else:
+            print(f"No changes to commit - files already at version {version}")
 
-        print(f"Created release commit and tag v{version}")
+        subprocess.run([self.git_executable, "tag", f"v{version}"], check=True)
+        print(f"Created release tag v{version}")
 
     def check_status(self) -> None:
         current_version = self.get_current_version()
@@ -118,9 +124,7 @@ class ReleaseManager:
             if response.status_code == 200:
                 print(f"   PyPI status: Version {current_version} EXISTS on PyPI")
             else:
-                print(
-                    f"   PyPI status: Version {current_version} NOT on PyPI (ready to publish)"
-                )
+                print(f"   PyPI status: Version {current_version} NOT on PyPI (ready to publish)")
         except ImportError:
             print("   PyPI status: Install 'requests' to check PyPI status")
         except requests.exceptions.RequestException as e:
