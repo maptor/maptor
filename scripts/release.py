@@ -43,7 +43,12 @@ class ReleaseManager:
         with open(self.pyproject_path) as f:
             content = f.read()
 
-        content = re.sub(r'version = "[^"]*"', f'version = "{new_version}"', content)
+        content = re.sub(
+            r'(\[project\]\s*\n(?:[^\[](?:[^\n]*\n))*?)version\s*=\s*"[^"]*"',
+            rf'\1version = "{new_version}"',
+            content,
+            flags=re.MULTILINE,
+        )
 
         with open(self.pyproject_path, "w") as f:
             f.write(content)
