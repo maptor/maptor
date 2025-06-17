@@ -8,7 +8,7 @@ MAPTOR: Multiphase Adaptive Trajectory Optimizer
 `Source Repository <https://github.com/maptor/maptor>`__ |
 `Issues & Ideas <https://github.com/maptor/maptor/issues>`__ |
 
-**MAPTOR** is a Python framework for solving optimal control problems using the Radau Pseudospectral Method.
+**MAPTOR** is a Python framework for trajectory optimization using optimal control. MAPTOR solves problems involving the motion of vehicles, robots, spacecraft, and other dynamic systems through space and time using the Legendre-Gauss-Radau pseudospectral method and phs-adaptive mesh refinement.
 
 .. grid:: 1 1 2 2
     :gutter: 2 3 4 4
