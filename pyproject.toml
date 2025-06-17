@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
-    "License :: OSI Approved :: LGPL v3",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -49,7 +49,7 @@ dev = [
 line-length = 100
 
 # Python version targets
-target-version = "0.1.0"
+target-version = "py311"
 
 # Include/exclude patterns
 include = ["*.py", "*.pyi"]
