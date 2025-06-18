@@ -32,7 +32,6 @@ MAPTOR implements the **Legendre-Gauss-Radau pseudospectral method** with:
 
 ```python
 import maptor as mtor
-import numpy as np
 
 # Minimum-time trajectory: reach target with bounded control
 problem = mtor.Problem("Minimum Time to Target")
