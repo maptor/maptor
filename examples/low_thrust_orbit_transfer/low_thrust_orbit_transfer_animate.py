@@ -74,33 +74,29 @@ def animate_low_thrust_orbit_transfer(solution, save_filename="orbit_transfer.mp
         "L_scaled": solution["L_scaled"][unique_indices],
     }
 
-    # Create smooth trajectory
-    num_smooth_points = 1000
-    time_normalized = np.linspace(0, 1, num_smooth_points)
+    # Animation parameters (CORRECTED - higher resolution for smooth orbital motion)
+    animation_duration_seconds = 4
+    final_time = solution.status["total_mission_time"]
+    fps = 30  # Standard frame rate for DaVinci Resolve compatibility
+    total_frames = int(animation_duration_seconds * fps)  # 120 animation frames
+    trajectory_resolution = 1000  # High resolution for smooth orbital paths
+    animation_time = np.linspace(0, final_time, trajectory_resolution)
 
-    p_smooth = np.interp(
-        time_normalized, np.linspace(0, 1, len(time_sol)), solution_data["p_scaled"]
-    )
-    f_smooth = np.interp(time_normalized, np.linspace(0, 1, len(time_sol)), solution_data["f"])
-    g_smooth = np.interp(time_normalized, np.linspace(0, 1, len(time_sol)), solution_data["g"])
-    h_smooth = np.interp(time_normalized, np.linspace(0, 1, len(time_sol)), solution_data["h"])
-    k_smooth = np.interp(time_normalized, np.linspace(0, 1, len(time_sol)), solution_data["k"])
-    L_smooth = np.interp(
-        time_normalized, np.linspace(0, 1, len(time_sol)), solution_data["L_scaled"]
-    )
+    # Interpolate trajectories onto high-resolution time grid
+    p_smooth = np.interp(animation_time, time_sol, solution_data["p_scaled"])
+    f_smooth = np.interp(animation_time, time_sol, solution_data["f"])
+    g_smooth = np.interp(animation_time, time_sol, solution_data["g"])
+    h_smooth = np.interp(animation_time, time_sol, solution_data["h"])
+    k_smooth = np.interp(animation_time, time_sol, solution_data["k"])
+    L_smooth = np.interp(animation_time, time_sol, solution_data["L_scaled"])
 
     trajectory_points = []
-    for i in range(num_smooth_points):
+    for i in range(trajectory_resolution):  # Create 1000 smooth trajectory points
         pos = modified_equinoctial_to_cartesian(
             p_smooth[i], f_smooth[i], g_smooth[i], h_smooth[i], k_smooth[i], L_smooth[i]
         )
         trajectory_points.append(pos)
     trajectory_points = np.array(trajectory_points)
-
-    # Animation parameters
-    animation_duration_seconds = 4
-    total_frames = num_smooth_points
-    fps = total_frames / animation_duration_seconds
 
     # Generate orbits
     initial_orbit = generate_orbit_points(
@@ -128,7 +124,7 @@ def animate_low_thrust_orbit_transfer(solution, save_filename="orbit_transfer.mp
             np.max(np.linalg.norm(initial_orbit, axis=1)),
             np.max(np.linalg.norm(final_orbit, axis=1)),
         )
-        * 0.75
+        * 0.6
     )
 
     ax.set_xlim([-max_radius, max_radius])
@@ -184,11 +180,14 @@ def animate_low_thrust_orbit_transfer(solution, save_filename="orbit_transfer.mp
     )
 
     def animate(frame):
-        trail_points = trajectory_points[: frame + 1]
+        # Map animation frame to trajectory index for smooth motion
+        trajectory_index = int(frame * (trajectory_resolution - 1) / (total_frames - 1))
+
+        trail_points = trajectory_points[: trajectory_index + 1]
         if len(trail_points) > 1:
             trajectory_line.set_data_3d(trail_points[:, 0], trail_points[:, 1], trail_points[:, 2])
 
-        current_pos = trajectory_points[frame]
+        current_pos = trajectory_points[trajectory_index]
         spacecraft_point.set_data_3d([current_pos[0]], [current_pos[1]], [current_pos[2]])
 
         return trajectory_line, spacecraft_point

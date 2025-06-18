@@ -294,7 +294,7 @@ def animate_quadcopter_flight(solution, save_filename="quadcopter_flight.mp4"):
 
     # Setup minimal 3D plot
     plt.style.use("dark_background")
-    fig = plt.figure(figsize=(12, 12), facecolor=COLORS["background_dark"])
+    fig = plt.figure(figsize=(12, 12), dpi=200, facecolor=COLORS["background_dark"])
     ax = fig.add_subplot(111, projection="3d", facecolor=COLORS["background_dark"])
 
     # Set bounds with padding for 10m x 10m visualization
@@ -391,7 +391,7 @@ def animate_quadcopter_flight(solution, save_filename="quadcopter_flight.mp4"):
     )
 
     try:
-        anim.save(save_filename, writer="ffmpeg", fps=fps, bitrate=3000)
+        anim.save(save_filename, writer="ffmpeg", fps=fps, bitrate=8000)
         print(f"Animation saved to {Path(save_filename).resolve()}")
     except Exception as e:
         print(f"Could not save video: {e}")
