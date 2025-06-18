@@ -81,18 +81,6 @@ MAPTOR: Multiphase Adaptive Trajectory Optimizer
 
             API Docs
 
-Key Features
-------------
-
-**Simple API**: Intuitive problem definition with automatic mesh generation
-
-**Adaptive Refinement**: High-precision solutions with automatic error control
-
-**Multiphase Support**: Complex mission profiles with phase transitions
-
-**Built-in Analysis**: Comprehensive plotting and solution diagnostics
-
-**Type Safety**: Full type hints for robust development
 
 Installation
 ------------
