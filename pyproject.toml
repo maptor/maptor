@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "maptor"
 version = "0.1.2"
 description = "Multiphase Adaptive Trajectory Optimizer"
-authors = [{name = "David Timothy"}]
+authors = [{name = "David Timothy", email = "chendavidtimothy@gmail.com"}]
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
