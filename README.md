@@ -8,6 +8,10 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
+**Author:** [David Timothy](https://github.com/ChenDavidTimothy)
+
+**Contact:** chendavidtimothy@gmail.com
+
 A Python framework for **trajectory optimization** using optimal control. MAPTOR solves problems involving the motion of vehicles, robots, spacecraft, and other dynamic systems through space and time using the Legendre-Gauss-Radau pseudospectral method and phs-adaptive mesh refinement.
 
 ## What is Trajectory Optimization?
