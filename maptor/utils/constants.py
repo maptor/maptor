@@ -7,7 +7,7 @@ LARGE_VALUE: float = 1e12  # General "infinity" replacement
 
 
 # ODE solver constants
-DEFAULT_ODE_RTOL = 1e-6
+DEFAULT_ODE_RTOL = 1e-8
 DEFAULT_ODE_ATOL_FACTOR = 1e-8
 DEFAULT_ODE_METHOD: str = "RK45"
 DEFAULT_ODE_MAX_STEP: float | None = None
