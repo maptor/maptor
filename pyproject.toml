@@ -150,7 +150,7 @@ line-ending = "auto"
 # ============================================================================
 
 [tool.mypy]
-python_version = "py311"
+python_version = "3.11"
 
 # Core type checking
 warn_return_any = true

@@ -250,8 +250,6 @@ def _print_integral_results_data(solution: Solution) -> None:
 
 def _print_adaptive_refinement_data(solution: Solution) -> None:
     adaptive = solution.adaptive
-    if adaptive is None:
-        return
 
     print("\n" + "=" * 50)
     print("ADAPTIVE REFINEMENT DATA")

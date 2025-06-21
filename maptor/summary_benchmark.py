@@ -37,9 +37,6 @@ def print_comprehensive_benchmark_summary(solution: Solution) -> None:
 
 def _print_performance_table(solution: Solution) -> None:
     adaptive_info = solution.adaptive
-    if adaptive_info is None:
-        print("Adaptive data unavailable")
-        return
 
     # Use single source benchmark data
     benchmark_data = adaptive_info.get("benchmark")
@@ -93,8 +90,6 @@ def _print_refinement_strategy_summary(solution: Solution) -> None:
 
 def _print_efficiency_metrics(solution: Solution) -> None:
     adaptive_info = solution.adaptive
-    if adaptive_info is None:
-        return
 
     # Use single source benchmark data
     benchmark_data = adaptive_info.get("benchmark")
