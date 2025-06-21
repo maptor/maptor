@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol, TypeAlias
+from typing import Any, Protocol, TypeAlias, TypedDict
 
 import casadi as ca
 import numpy as np
@@ -150,7 +150,7 @@ class Constraint:
 # ADAPTIVE ALGORITHM DATA
 @dataclass
 class AdaptiveAlgorithmData:
-    """Data from adaptive mesh refinement algorithm."""
+    """Data from adaptive mesh refinement algorithm with single source of truth."""
 
     target_tolerance: float
     total_iterations: int
@@ -158,6 +158,7 @@ class AdaptiveAlgorithmData:
     phase_converged: dict[PhaseID, bool]
     final_phase_error_estimates: dict[PhaseID, list[float]]
     phase_gamma_factors: dict[PhaseID, FloatArray | None] = field(default_factory=dict)
+    iteration_history: dict[int, IterationData] = field(default_factory=dict)
 
 
 class OptimalControlSolution:
@@ -196,3 +197,34 @@ class OptimalControlSolution:
 
         # Adaptive algorithm data for convergence analysis
         self.adaptive_data: AdaptiveAlgorithmData | None = None
+
+
+@dataclass
+class IterationData:
+    """Per-iteration adaptive refinement metrics for research benchmarking.
+
+    Captures exact algorithm state at each iteration for honest performance
+    comparison with other pseudospectral methods
+    """
+
+    iteration: int
+    phase_error_estimates: dict[PhaseID, list[float]]
+    phase_collocation_points: dict[PhaseID, int]
+    phase_mesh_intervals: dict[PhaseID, int]
+    phase_polynomial_degrees: dict[PhaseID, list[int]]
+    phase_mesh_nodes: dict[PhaseID, FloatArray]
+    refinement_strategy: dict[PhaseID, dict[int, str]]
+    total_collocation_points: int
+    max_error_all_phases: float
+    convergence_status: dict[PhaseID, bool]
+
+
+class BenchmarkData(TypedDict):
+    """Type definition for processed benchmark arrays."""
+
+    mesh_iteration: list[int]
+    estimated_error: list[float]
+    collocation_points: list[int]
+    mesh_intervals: list[int]
+    polynomial_degrees: list[list[int]]
+    refinement_strategy: list[dict[int, str]]

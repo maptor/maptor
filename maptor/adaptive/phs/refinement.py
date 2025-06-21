@@ -395,7 +395,7 @@ def _h_reduce_intervals(
     solution: OptimalControlSolution,
     problem: ProblemProtocol,
     adaptive_params: AdaptiveParameters,
-    gamma_factors: FloatArray,
+    global_gamma_factors: FloatArray,  # Changed from gamma_factors
     state_evaluator_first: Callable[[float | FloatArray], FloatArray],
     control_evaluator_first: Callable[[float | FloatArray], FloatArray] | None,
     state_evaluator_second: Callable[[float | FloatArray], FloatArray],
@@ -405,6 +405,7 @@ def _h_reduce_intervals(
     ]
     | None = None,
 ) -> bool:
+    """H-reduce intervals using global gamma factors."""
     if not _validate_merge_preconditions(solution, phase_id, first_idx):
         return False
 
@@ -469,6 +470,13 @@ def _h_reduce_intervals(
     if num_states == 0:
         return fwd_success and bwd_success
 
+    # Use global gamma factors instead of per-phase
+    safe_gamma = (
+        global_gamma_factors[:num_states, :]
+        if num_states > 0
+        else np.ones((1, 1), dtype=np.float64)
+    )
+
     all_fwd_errors, all_bwd_errors = _calculate_merge_errors(
         fwd_trajectory,
         bwd_trajectory,
@@ -476,7 +484,7 @@ def _h_reduce_intervals(
         bwd_tau_points,
         state_evaluator_first,
         state_evaluator_second,
-        gamma_factors,
+        safe_gamma,  # Use global gamma
         tau_start_k,
         tau_shared,
         tau_end_kp1,

@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from maptor.mtor_types import FloatArray, ODESolverCallable, PhaseID
+from maptor.mtor_types import FloatArray, ODESolverCallable, OptimalControlSolution, PhaseID
 from maptor.utils.constants import (
     DEFAULT_ERROR_SIM_POINTS,
     DEFAULT_ODE_ATOL_FACTOR,
@@ -106,7 +106,7 @@ class MultiphaseAdaptiveState:
     phase_mesh_points: dict[PhaseID, FloatArray]
     phase_converged: dict[PhaseID, bool]
     iteration: int = 0
-    most_recent_unified_solution: Any = None
+    most_recent_unified_solution: OptimalControlSolution | None = None
 
     def _get_phase_ids(self) -> list[PhaseID]:
         return sorted(self.phase_polynomial_degrees.keys())

@@ -81,7 +81,7 @@ def _compute_combined_errors(
 def _apply_error_bounds(max_error: float) -> float:
     if np.isnan(max_error):
         return np.inf
-    return max(max_error, 1e-15) if 0.0 < max_error < 1e-15 else float(max_error)
+    return max(max_error, 1e-16) if 0.0 < max_error < 1e-16 else float(max_error)
 
 
 def _calculate_combined_error_estimate(

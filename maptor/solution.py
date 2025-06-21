@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .mtor_types import FloatArray, OptimalControlSolution, PhaseID, ProblemProtocol
+from .mtor_types import BenchmarkData, FloatArray, OptimalControlSolution, PhaseID, ProblemProtocol
 
 
 if TYPE_CHECKING:
@@ -337,30 +337,30 @@ class Solution:
         return phases_data
 
     @property
-    def parameters(self) -> dict[str, Any] | None:
+    def parameters(self) -> dict[str, Any]:
         """
         Static parameter optimization results and information.
 
-        Provides access to optimized static parameters with comprehensive
-        parameter information. Returns None if no parameters were defined.
+        Always returns valid parameter dictionary with empty structure
+        if no parameters were defined
 
         Returns:
-            Parameter information dictionary or None:
+            Parameter information dictionary:
 
-            - **values** (FloatArray): Optimized parameter values
+            - **values** (FloatArray): Optimized parameter values (empty array if no parameters)
             - **names** (list[str] | None): Parameter names if available
-            - **count** (int): Number of static parameters
+            - **count** (int): Number of static parameters (0 if no parameters)
 
         Examples:
             Parameter existence check:
 
-            >>> if solution.parameters is not None:
+            >>> if solution.parameters["count"] > 0:
             ...     print("Problem has static parameters")
 
             Parameter access:
 
             >>> params = solution.parameters
-            >>> if params:
+            >>> if params["count"] > 0:
             ...     values = params["values"]        # [500.0, 1500.0, 0.1]
             ...     count = params["count"]          # 3
             ...     names = params["names"]          # ["mass", "thrust", "drag"] or None
@@ -368,24 +368,28 @@ class Solution:
             Named parameter access:
 
             >>> params = solution.parameters
-            >>> if params and params["names"]:
+            >>> if params["names"] and params["count"] > 0:
             ...     for name, value in zip(params["names"], params["values"]):
             ...         print(f"{name}: {value:.6f}")
 
             Unnamed parameter access:
 
             >>> params = solution.parameters
-            >>> if params:
-            ...     for i, value in enumerate(params["values"]):
-            ...         print(f"Parameter {i}: {value:.6f}")
+            >>> for i in range(params["count"]):
+            ...     value = params["values"][i]
+            ...     print(f"Parameter {i}: {value:.6f}")
 
             No parameters case:
 
-            >>> if solution.parameters is None:
+            >>> if solution.parameters["count"] == 0:
             ...     print("No static parameters in problem")
         """
         if self._raw_solution is None or self._raw_solution.static_parameters is None:
-            return None
+            return {
+                "values": np.array([], dtype=np.float64),
+                "names": None,
+                "count": 0,
+            }
 
         # Try to get parameter names if available
         param_names = None
@@ -403,85 +407,215 @@ class Solution:
             "count": len(self._raw_solution.static_parameters),
         }
 
-    @property
-    def adaptive(self) -> dict[str, Any] | None:
-        """
-        Adaptive mesh refinement algorithm results and convergence diagnostics.
-
-        Provides comprehensive adaptive algorithm performance data including
-        convergence status, error estimates, and refinement statistics. Only
-        available for adaptive solver solutions.
-
-        Returns:
-            Adaptive algorithm data dictionary or None:
-
-            - **converged** (bool): Algorithm convergence status
-            - **iterations** (int): Refinement iterations performed
-            - **target_tolerance** (float): Target error tolerance
-            - **phase_converged** (dict): Per-phase convergence status
-            - **final_errors** (dict): Final error estimates per phase
-            - **gamma_factors** (dict): Normalization factors per phase
-
-        Examples:
-            Adaptive solution check:
-
-            >>> if solution.adaptive:
-            ...     print("Adaptive solution available")
-
-            Convergence assessment:
-
-            >>> adaptive_info = solution.adaptive
-            >>> if adaptive_info:
-            ...     converged = adaptive_info["converged"]
-            ...     iterations = adaptive_info["iterations"]
-            ...     tolerance = adaptive_info["target_tolerance"]
-
-            Per-phase convergence:
-
-            >>> if solution.adaptive:
-            ...     for phase_id, converged in solution.adaptive["phase_converged"].items():
-            ...         status = "✓" if converged else "✗"
-            ...         print(f"Phase {phase_id}: {status}")
-
-            Error analysis:
-
-            >>> if solution.adaptive:
-            ...     for phase_id, errors in solution.adaptive["final_errors"].items():
-            ...         max_error = max(errors) if errors else 0.0
-            ...         print(f"Phase {phase_id} max error: {max_error:.2e}")
-
-            Algorithm statistics:
-
-            >>> adaptive = solution.adaptive
-            >>> if adaptive:
-            ...     print(f"Converged: {adaptive['converged']}")
-            ...     print(f"Iterations: {adaptive['iterations']}")
-            ...     print(f"Target tolerance: {adaptive['target_tolerance']:.1e}")
-
-            Fixed mesh solution:
-
-            >>> if solution.adaptive is None:
-            ...     print("Fixed mesh solution - no adaptive data")
-        """
+    def _extract_mission_benchmark_arrays(self) -> BenchmarkData:
         if self._raw_solution is None or self._raw_solution.adaptive_data is None:
-            return None
+            return {
+                "mesh_iteration": [],
+                "estimated_error": [],
+                "collocation_points": [],
+                "mesh_intervals": [],
+                "polynomial_degrees": [],
+                "refinement_strategy": [],
+            }
 
-        adaptive_data = self._raw_solution.adaptive_data
+        history = self._raw_solution.adaptive_data.iteration_history
+        if not history:
+            return {
+                "mesh_iteration": [],
+                "estimated_error": [],
+                "collocation_points": [],
+                "mesh_intervals": [],
+                "polynomial_degrees": [],
+                "refinement_strategy": [],
+            }
+
+        iterations = sorted(history.keys())
+
+        # Single pass extraction
+        mesh_iterations = iterations
+        estimated_errors = [history[i].max_error_all_phases for i in iterations]
+        collocation_points = [history[i].total_collocation_points for i in iterations]
+        mesh_intervals = [sum(history[i].phase_mesh_intervals.values()) for i in iterations]
+
+        polynomial_degrees = []
+        refinement_strategy = []
+        for i in iterations:
+            data = history[i]
+            combined_degrees = []
+            for phase_degrees in data.phase_polynomial_degrees.values():
+                combined_degrees.extend(phase_degrees)
+            polynomial_degrees.append(combined_degrees)
+
+            combined_strategy = {}
+            for phase_strategy in data.refinement_strategy.values():
+                combined_strategy.update(phase_strategy)
+            refinement_strategy.append(combined_strategy)
 
         return {
+            "mesh_iteration": mesh_iterations,
+            "estimated_error": estimated_errors,
+            "collocation_points": collocation_points,
+            "mesh_intervals": mesh_intervals,
+            "polynomial_degrees": polynomial_degrees,
+            "refinement_strategy": refinement_strategy,
+        }
+
+    def _extract_phase_benchmark_arrays(self) -> dict[PhaseID, BenchmarkData]:
+        if self._raw_solution is None or self._raw_solution.adaptive_data is None:
+            return {}
+
+        history = self._raw_solution.adaptive_data.iteration_history
+        if not history:
+            return {}
+
+        iterations = sorted(history.keys())
+        first_data = history[iterations[0]]
+        available_phases = list(first_data.phase_error_estimates.keys())
+
+        phase_benchmarks: dict[PhaseID, BenchmarkData] = {}
+
+        # Single pass extraction per phase
+        for phase_id in available_phases:
+            mesh_iterations = iterations
+            estimated_errors = []
+            collocation_points = []
+            mesh_intervals = []
+            polynomial_degrees = []
+            refinement_strategy = []
+
+            for iteration in iterations:
+                data = history[iteration]
+
+                # Error estimate for this phase
+                if phase_id in data.phase_error_estimates:
+                    phase_errors = data.phase_error_estimates[phase_id]
+                    max_error = max(phase_errors) if phase_errors else float("inf")
+                    estimated_errors.append(max_error)
+                else:
+                    estimated_errors.append(float("inf"))
+
+                # Phase metrics
+                collocation_points.append(data.phase_collocation_points.get(phase_id, 0))
+                mesh_intervals.append(data.phase_mesh_intervals.get(phase_id, 0))
+                polynomial_degrees.append(data.phase_polynomial_degrees.get(phase_id, []).copy())
+                refinement_strategy.append(data.refinement_strategy.get(phase_id, {}).copy())
+
+            phase_benchmarks[phase_id] = {
+                "mesh_iteration": mesh_iterations,
+                "estimated_error": estimated_errors,
+                "collocation_points": collocation_points,
+                "mesh_intervals": mesh_intervals,
+                "polynomial_degrees": polynomial_degrees,
+                "refinement_strategy": refinement_strategy,
+            }
+
+        return phase_benchmarks
+
+    @property
+    def adaptive(self) -> dict[str, Any]:
+        """
+        Comprehensive adaptive algorithm performance data and benchmarking metrics.
+
+        Provides complete adaptive mesh refinement data including convergence status,
+        error estimates, refinement statistics, and iteration-by-iteration benchmarking
+        arrays. Only available for adaptive solver solutions.
+
+        Returns:
+            Adaptive algorithm data dictionary with comprehensive benchmarking arrays:
+
+            **Algorithm Status:**
+            - **converged** (bool): Algorithm convergence status
+            - **iterations** (int): Total refinement iterations performed
+            - **target_tolerance** (float): Target error tolerance
+            - **phase_converged** (dict): Per-phase convergence status
+            - **final_errors** (dict): Final error estimates per phase per interval
+            - **gamma_factors** (dict): Normalization factors per phase
+
+            **Complete Benchmarking Data:**
+            - **iteration_history** (dict): Raw per-iteration algorithm state
+            - **benchmark** (dict): Processed mission-wide benchmark arrays
+            - **phase_benchmarks** (dict): Per-phase benchmark arrays
+
+            **Benchmark Array Structure** (both mission-wide and per-phase):
+            - **mesh_iteration** (list[int]): Iteration numbers [0, 1, 2, ...]
+            - **estimated_error** (list[float]): Error estimates [1e-2, 1e-3, 1e-5, ...]
+            - **collocation_points** (list[int]): Total collocation points [50, 75, 100, ...]
+            - **mesh_intervals** (list[int]): Total mesh intervals [10, 15, 20, ...]
+            - **polynomial_degrees** (list[list[int]]): Polynomial degrees per interval
+            - **refinement_strategy** (list[dict]): Refinement actions per iteration
+
+        Raises:
+            RuntimeError: If no adaptive data available. This typically means
+                solve_fixed_mesh() was used instead of solve_adaptive().
+
+        Examples:
+            Safe adaptive data access:
+
+            >>> try:
+            ...     adaptive = solution.adaptive
+            ...     converged = adaptive["converged"]
+            ...     iterations = adaptive["iterations"]
+            ... except RuntimeError:
+            ...     print("Fixed mesh solution - no adaptive data available")
+
+            Complete benchmark arrays:
+
+            >>> adaptive = solution.adaptive  # May raise RuntimeError
+            >>> benchmark = adaptive["benchmark"]
+            >>> iterations = benchmark["mesh_iteration"]         # [0, 1, 2, 3]
+            >>> errors = benchmark["estimated_error"]            # [1e-2, 1e-3, 1e-5, 1e-7]
+            >>> points = benchmark["collocation_points"]         # [50, 75, 100, 150]
+
+            Phase-specific benchmark data:
+
+            >>> phase_benchmarks = solution.adaptive["phase_benchmarks"]
+            >>> phase1_data = phase_benchmarks[1]
+            >>> phase1_errors = phase1_data["estimated_error"]
+
+            Built-in analysis methods:
+
+            >>> try:
+            ...     solution.print_benchmark_summary()
+            ...     solution.plot_refinement_history(phase_id=1)
+            ... except RuntimeError:
+            ...     print("No adaptive data for analysis")
+        """
+        if self._raw_solution is None or self._raw_solution.adaptive_data is None:
+            raise RuntimeError(
+                "Adaptive data not available. This solution was created with solve_fixed_mesh(). "
+                "Use solve_adaptive() to obtain adaptive mesh refinement data."
+            )
+
+        adaptive_data = self._raw_solution.adaptive_data
+        result = {
             "converged": adaptive_data.converged,
             "iterations": adaptive_data.total_iterations,
             "target_tolerance": adaptive_data.target_tolerance,
-            "phase_converged": adaptive_data.phase_converged.copy(),
-            "final_errors": {
-                phase_id: errors.copy()
-                for phase_id, errors in adaptive_data.final_phase_error_estimates.items()
-            },
-            "gamma_factors": {
-                phase_id: factors.copy() if factors is not None else None
-                for phase_id, factors in adaptive_data.phase_gamma_factors.items()
-            },
+            "phase_converged": adaptive_data.phase_converged,
+            "final_errors": adaptive_data.final_phase_error_estimates,
+            "gamma_factors": adaptive_data.phase_gamma_factors,
         }
+
+        if hasattr(adaptive_data, "iteration_history") and adaptive_data.iteration_history:
+            iteration_history: dict[int, dict[str, Any]] = {}
+            for iteration, data in adaptive_data.iteration_history.items():
+                iteration_history[iteration] = {
+                    "iteration": data.iteration,
+                    "phase_error_estimates": data.phase_error_estimates,
+                    "phase_collocation_points": data.phase_collocation_points,
+                    "phase_mesh_intervals": data.phase_mesh_intervals,
+                    "phase_polynomial_degrees": data.phase_polynomial_degrees,
+                    "phase_mesh_nodes": data.phase_mesh_nodes,
+                    "refinement_strategy": data.refinement_strategy,
+                    "total_collocation_points": data.total_collocation_points,
+                    "max_error_all_phases": data.max_error_all_phases,
+                    "convergence_status": data.convergence_status,
+                }
+            result["iteration_history"] = iteration_history
+            result["benchmark"] = self._extract_mission_benchmark_arrays()
+            result["phase_benchmarks"] = self._extract_phase_benchmark_arrays()
+
+        return result
 
     def _get_phase_ids(self) -> list[PhaseID]:
         if self._raw_solution is None:
@@ -507,7 +641,6 @@ class Solution:
         if len(key) != 2:
             raise KeyError("Tuple key must have exactly 2 elements: (phase_id, variable_name)")
 
-        # Explicit None check for mypy type safety
         if self._raw_solution is None:
             raise RuntimeError("Cannot access variable: No solution data available")
 
@@ -690,3 +823,169 @@ class Solution:
             print(f"Phases: {len(self.phases)}")
             if self.adaptive:
                 print(f"Adaptive: Converged in {self.adaptive['iterations']} iterations")
+
+    def plot_refinement_history(
+        self,
+        phase_id: PhaseID,
+        figsize: tuple[float, float] = (12, 6),
+        transform_domain: tuple[float, float] | None = None,
+    ) -> None:
+        """
+        Visualize adaptive mesh refinement history for research analysis.
+
+        Creates mesh point distribution evolution plot showing both mesh interval
+        boundaries (red circles) and interior collocation points (black dots).
+
+        Args:
+            phase_id: Phase to visualize
+            figsize: Figure dimensions (width, height)
+            transform_domain: Transform from [-1,1] to physical domain (min, max)
+        """
+        if not self.adaptive or "iteration_history" not in self.adaptive:
+            raise ValueError("No adaptive iteration history available for plotting")
+
+        history = self.adaptive["iteration_history"]
+        if not history:
+            raise ValueError("Adaptive iteration history is empty")
+
+        first_iteration = next(iter(history.values()))
+        if phase_id not in first_iteration["phase_mesh_nodes"]:
+            available_phases = list(first_iteration["phase_mesh_nodes"].keys())
+            raise ValueError(f"Phase {phase_id} not found. Available phases: {available_phases}")
+
+        try:
+            import matplotlib.pyplot as plt
+
+            from maptor.radau import _compute_radau_collocation_components
+        except ImportError as e:
+            raise ImportError("matplotlib required for mesh refinement plotting") from e
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        for iteration in sorted(history.keys()):
+            data = history[iteration]
+            mesh_nodes = data["phase_mesh_nodes"][phase_id].copy()
+            polynomial_degrees = data["phase_polynomial_degrees"][phase_id]
+
+            # Transform domain if requested
+            if transform_domain is not None:
+                domain_min, domain_max = transform_domain
+                mesh_nodes = domain_min + (mesh_nodes + 1) * (domain_max - domain_min) / 2
+
+            y_position = iteration + 1
+
+            # Plot mesh interval boundaries (red circles)
+            ax.scatter(
+                mesh_nodes,
+                [y_position] * len(mesh_nodes),
+                s=60,
+                marker="o",
+                facecolors="none",
+                edgecolors="red",
+                linewidth=2,
+            )
+
+            # Plot interior collocation points (black dots)
+            collocation_points = []
+            for interval_idx in range(len(polynomial_degrees)):
+                degree = polynomial_degrees[interval_idx]
+                if degree > 0:
+                    radau_components = _compute_radau_collocation_components(degree)
+                    radau_points = radau_components.collocation_nodes
+
+                    # Transform to current interval
+                    interval_start = mesh_nodes[interval_idx]
+                    interval_end = mesh_nodes[interval_idx + 1]
+                    interval_colloc_points = (
+                        interval_start + (radau_points + 1) * (interval_end - interval_start) / 2
+                    )
+                    collocation_points.extend(interval_colloc_points)
+
+            if collocation_points:
+                ax.scatter(
+                    collocation_points,
+                    [y_position] * len(collocation_points),
+                    s=25,
+                    marker="o",
+                    color="black",
+                )
+
+        domain_label = "Mesh Point Location"
+        if transform_domain is not None:
+            domain_label += f" [{transform_domain[0]}, {transform_domain[1]}]"
+
+        ax.set_xlabel(domain_label)
+        ax.set_ylabel("Mesh State")
+        ax.set_title(f"MAPTOR Mesh Refinement History - Phase {phase_id}")
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(0.5, len(history) + 0.5)
+
+        iterations = sorted(history.keys())
+        y_positions = [iter_num + 1 for iter_num in iterations]
+        y_labels = []
+        for iter_num in iterations:
+            if iter_num == 0:
+                y_labels.append("Initial")
+            else:
+                y_labels.append(f"Iter {iter_num}")
+
+        ax.set_yticks(y_positions)
+        ax.set_yticklabels(y_labels)
+
+        from matplotlib.lines import Line2D
+
+        legend_elements = [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                markerfacecolor="none",
+                markeredgecolor="red",
+                markersize=8,
+                linewidth=2,
+                label="Mesh boundaries",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="black",
+                markersize=6,
+                linewidth=0,
+                label="Collocation points",
+            ),
+        ]
+        ax.legend(handles=legend_elements, loc="upper right")
+
+        plt.tight_layout()
+        plt.show()
+
+    def print_benchmark_summary(self) -> None:
+        """
+        Display professional adaptive mesh refinement benchmark analysis.
+
+        Provides comprehensive performance metrics, convergence analysis, refinement
+        strategies, and research integrity verification suitable for academic
+        comparison with established pseudospectral optimal control methods.
+
+        Examples:
+            Complete benchmark analysis:
+
+            >>> solution = mtor.solve_adaptive(problem)
+            >>> solution.print_benchmark_summary()
+
+            Access raw benchmark data:
+
+            >>> benchmark_data = solution.adaptive["benchmark"]
+            >>> iterations = benchmark_data["mesh_iteration"]
+            >>> errors = benchmark_data["estimated_error"]
+
+            Phase-specific analysis:
+
+            >>> phase_data = solution.adaptive["phase_benchmarks"][1]
+            >>> solution.plot_refinement_history(phase_id=1)
+        """
+        from .summary_benchmark import print_comprehensive_benchmark_summary
+
+        print_comprehensive_benchmark_summary(self)
