@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/source/_static/MAPTOR_banner.svg" alt="MAPTOR" width="600">
+  <img src="docs/source/_static/MAPTOR_banner.png" alt="MAPTOR" width="600">
 </p>
 
 # MAPTOR: Multiphase Adaptive Trajectory Optimizer
