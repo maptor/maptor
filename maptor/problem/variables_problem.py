@@ -4,13 +4,18 @@ from typing import Any, cast
 
 import casadi as ca
 
+from ..exceptions import ConfigurationError
 from ..input_validation import _validate_constraint_input_format, _validate_string_not_empty
 from .state import (
+    BoundaryInput,
     ConstraintInput,
+    FixedInput,
     MultiPhaseVariableState,
     PhaseDefinition,
     StaticParameterState,
-    _BoundaryConstraint,
+    _EndpointConstraint,
+    _FixedConstraint,
+    _RangeBoundaryConstraint,
 )
 
 
@@ -25,11 +30,6 @@ def _create_phase_symbol(base_name: str, phase_id: int, suffix: str = "") -> ca.
     return ca.MX.sym(name, 1)  # type: ignore[arg-type]
 
 
-def _validate_constraint_and_name(name: str, constraint: ConstraintInput, context: str) -> None:
-    _validate_string_not_empty(name, f"{context} name")
-    _validate_constraint_input_format(constraint, f"{context} '{name}' constraint")
-
-
 def _convert_expression_to_casadi(
     expr: Any, expression_type: str, allow_callable_error: bool = True
 ) -> ca.MX:
@@ -42,11 +42,11 @@ def _convert_expression_to_casadi(
             return ca.MX(expr)
     except Exception as e:
         if callable(expr) and allow_callable_error:
-            raise ValueError(
+            raise ConfigurationError(
                 f"{expression_type} appears to be a function {expr}. Did you forget to call it?"
             ) from e
         else:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Cannot convert {expression_type} of type {type(expr)} to CasADi MX: {expr}"
             ) from e
 
@@ -60,7 +60,7 @@ def _validate_dynamics_key_exists(
         if underlying_sym is sym:
             return
 
-    raise ValueError(f"Dynamics provided for undefined state variable in phase {phase_id}")
+    raise ConfigurationError(f"Dynamics provided for undefined state variable in phase {phase_id}")
 
 
 def _convert_dynamics_dict_to_casadi(
@@ -206,8 +206,8 @@ def create_phase_time_variable(
     if initial is None:
         initial = 0.0
 
-    t0_constraint = _BoundaryConstraint(initial)
-    tf_constraint = _BoundaryConstraint(final)
+    t0_constraint = _EndpointConstraint(initial)
+    tf_constraint = _EndpointConstraint(final)
 
     phase_def.t0_constraint = t0_constraint
     phase_def.tf_constraint = tf_constraint
@@ -223,21 +223,20 @@ def _create_phase_state_variable(
     name: str,
     initial: ConstraintInput = None,
     final: ConstraintInput = None,
-    boundary: ConstraintInput = None,
+    boundary: BoundaryInput = None,
 ) -> StateVariableImpl:
-    _validate_constraint_and_name(
-        name, initial, f"phase {phase_def.phase_id} state '{name}' initial"
-    )
-    _validate_constraint_and_name(name, final, f"phase {phase_def.phase_id} state '{name}' final")
-    _validate_constraint_and_name(
-        name, boundary, f"phase {phase_def.phase_id} state '{name}' boundary"
+    _validate_string_not_empty(name, f"phase {phase_def.phase_id} state name")
+    _validate_constraint_input_format(initial, f"phase {phase_def.phase_id} state '{name}' initial")
+    _validate_constraint_input_format(final, f"phase {phase_def.phase_id} state '{name}' final")
+    _validate_constraint_input_format(
+        boundary, f"phase {phase_def.phase_id} state '{name}' boundary"
     )
 
     sym_var, sym_initial, sym_final = _create_state_symbols(name, phase_def.phase_id)
 
-    initial_constraint = _BoundaryConstraint(initial) if initial is not None else None
-    final_constraint = _BoundaryConstraint(final) if final is not None else None
-    boundary_constraint = _BoundaryConstraint(boundary) if boundary is not None else None
+    initial_constraint = _EndpointConstraint(initial) if initial is not None else None
+    final_constraint = _EndpointConstraint(final) if final is not None else None
+    boundary_constraint = _RangeBoundaryConstraint(boundary) if boundary is not None else None
 
     phase_def.add_state(
         name=name,
@@ -253,12 +252,17 @@ def _create_phase_state_variable(
 
 
 def create_phase_control_variable(
-    phase_def: PhaseDefinition, name: str, boundary: ConstraintInput = None
+    phase_def: PhaseDefinition,
+    name: str,
+    boundary: BoundaryInput = None,  # Ranges only
 ) -> ca.MX:
-    _validate_constraint_and_name(name, boundary, f"phase {phase_def.phase_id} control '{name}'")
+    _validate_string_not_empty(name, f"phase {phase_def.phase_id} control name")
+    _validate_constraint_input_format(
+        boundary, f"phase {phase_def.phase_id} control '{name}' boundary"
+    )
 
     sym_var = _create_phase_symbol(name, phase_def.phase_id)
-    boundary_constraint = _BoundaryConstraint(boundary) if boundary is not None else None
+    boundary_constraint = _RangeBoundaryConstraint(boundary) if boundary is not None else None
 
     phase_def.add_control(name=name, symbol=sym_var, boundary_constraint=boundary_constraint)
 
@@ -266,14 +270,30 @@ def create_phase_control_variable(
 
 
 def _create_static_parameter(
-    static_params: StaticParameterState, name: str, boundary: ConstraintInput = None
+    static_params: StaticParameterState,
+    name: str,
+    boundary: BoundaryInput = None,  # Ranges only
+    fixed: FixedInput = None,  # Equality/symbolic only
 ) -> ca.MX:
-    _validate_constraint_and_name(name, boundary, f"parameter '{name}'")
+    _validate_string_not_empty(name, f"parameter '{name}' name")
+    _validate_constraint_input_format(boundary, f"parameter '{name}' boundary")
+    _validate_constraint_input_format(fixed, f"parameter '{name}' fixed")
+    if boundary is not None and fixed is not None:
+        raise ConfigurationError(
+            f"Parameter '{name}' cannot have both boundary and fixed constraints"
+        )
 
     sym_var = ca.MX.sym(f"param_{name}", 1)  # type: ignore[arg-type]
-    boundary_constraint = _BoundaryConstraint(boundary) if boundary is not None else None
 
-    static_params.add_parameter(name=name, symbol=sym_var, boundary_constraint=boundary_constraint)
+    boundary_constraint = _RangeBoundaryConstraint(boundary) if boundary is not None else None
+    fixed_constraint = _FixedConstraint(fixed) if fixed is not None else None
+
+    static_params.add_parameter(
+        name=name,
+        symbol=sym_var,
+        boundary_constraint=boundary_constraint,
+        fixed_constraint=fixed_constraint,
+    )
 
     return sym_var
 

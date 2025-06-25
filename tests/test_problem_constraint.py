@@ -69,7 +69,7 @@ class TestPathConstraints:
         phase.dynamics({x: 0})
 
         # Empty constraint list should fail
-        with pytest.raises(ValueError, match="requires at least one constraint"):
+        with pytest.raises(ConfigurationError, match="requires at least one constraint"):
             phase.path_constraints()
 
     def test_mixed_constraint_types(self):
@@ -172,7 +172,7 @@ class TestEventConstraints:
         phase.dynamics({x: 0})
 
         # Empty constraint list should fail
-        with pytest.raises(ValueError, match="requires at least one constraint"):
+        with pytest.raises(ConfigurationError, match="requires at least one constraint"):
             phase.event_constraints()
 
 
@@ -209,20 +209,24 @@ class TestBoundaryConstraints:
 
         x = phase.state("x", initial=0)
 
-        # Different control constraint types
+        # NEW API: Only range tuples allowed for boundary=
         bounded_control = phase.control("bounded", boundary=(0, 100))
-        fixed_control = phase.control("fixed", boundary=50)
-        _lower_only = phase.control("lower", boundary=(10, None))
-        _upper_only = phase.control("upper", boundary=(None, 90))
-        _free_control = phase.control("free")
+        lower_only = phase.control("lower", boundary=(10, None))
+        upper_only = phase.control("upper", boundary=(None, 90))
+        free_control = phase.control("free")
 
-        phase.dynamics({x: bounded_control + fixed_control})
+        # OLD API: boundary=50 for equality - NOW SHOULD FAIL
+        with pytest.raises(
+            ConfigurationError, match="boundary= argument only accepts range tuples"
+        ):
+            phase.control("fixed", boundary=50)  # type: ignore[arg-type]
 
-        # Verify control constraints were stored
+        phase.dynamics({x: bounded_control + lower_only + upper_only + free_control})
+
+        # Verify valid controls were created
         control_info = phase._phase_def.control_info
-        assert control_info[0].boundary_constraint.lower == 0  # bounded_control
+        assert control_info[0].boundary_constraint.lower == 0
         assert control_info[0].boundary_constraint.upper == 100
-        assert control_info[1].boundary_constraint.equals == 50  # fixed_control
 
     def test_time_boundary_constraints(self):
         problem = mtor.Problem("Time Boundaries")
@@ -246,34 +250,56 @@ class TestConstraintFailureModes:
         problem = mtor.Problem("NaN Constraints")
         phase = problem.set_phase(1)
 
-        with pytest.raises(ConfigurationError, match="cannot be NaN"):
+        # NaN/Inf should be caught by input validation before reaching _RangeBoundaryConstraint
+        with pytest.raises(ConfigurationError, match="NaN|infinite|Invalid"):
             phase.state("x", initial=float("nan"))
 
-        with pytest.raises(ConfigurationError, match="infinite"):
+        with pytest.raises(ConfigurationError, match="NaN|infinite|Invalid"):
             phase.state("y", final=float("inf"))
 
-        with pytest.raises(ConfigurationError, match="infinite"):
-            phase.control("u", boundary=(-float("inf"), float("inf")))
+        with pytest.raises(ConfigurationError, match="NaN|infinite|Invalid"):
+            phase.control("u", boundary=(float("nan"), 10))
 
     def test_invalid_tuple_constraints_fail(self):
         problem = mtor.Problem("Invalid Tuples")
         phase = problem.set_phase(1)
 
-        # Wrong tuple length
-        with pytest.raises(ConfigurationError, match="must have 2 elements"):
+        # Wrong tuple length - should fail in _process_tuple_constraint_input
+        with pytest.raises(
+            ConfigurationError, match="Constraint tuple must have 2 elements, got 3"
+        ):
             phase.state("x", boundary=(1, 2, 3))  # type: ignore[arg-type]
 
-        # Invalid bound ordering
-        with pytest.raises(ConfigurationError, match="Lower bound.*upper bound"):
-            phase.state("y", initial=(10, 5))
+        # Invalid bound ordering - should fail in _RangeBoundaryConstraint
+        with pytest.raises(ConfigurationError):
+            phase.state("y", boundary=(10, 5))
 
     def test_conflicting_constraints_fail(self):
         # This would test the Constraint class validation
-        with pytest.raises(ValueError, match="Cannot specify equality.*with bound"):
+        with pytest.raises(
+            ValueError, match="Cannot specify equality constraint with bound constraints"
+        ):
             Constraint(val=ca.MX.sym("x", 1), equals=5, min_val=0, max_val=10)  # type: ignore[arg-type]
 
-        with pytest.raises(ValueError, match="min_val.*must be.*max_val"):
+        with pytest.raises(ValueError, match=r"min_val \(10\) must be <= max_val \(5\)"):
             Constraint(val=ca.MX.sym("x", 1), min_val=10, max_val=5)  # type: ignore[arg-type]
+
+    def test_boundary_scalar_values_now_fail(self):
+        """Test that old API scalar boundary values now fail."""
+        problem = mtor.Problem("Boundary Scalar Rejection")
+        phase = problem.set_phase(1)
+
+        # Controls: boundary=scalar should fail
+        with pytest.raises(ConfigurationError):
+            phase.control("ctrl", boundary=50.0)  # type: ignore[arg-type]
+
+        # States: boundary=scalar should fail
+        with pytest.raises(ConfigurationError):
+            phase.state("state", boundary=100.0)  # type: ignore[arg-type]
+
+        # Parameters: boundary=scalar should fail
+        with pytest.raises(ConfigurationError):
+            problem.parameter("param", boundary=9.81)  # type: ignore[arg-type]
 
 
 class TestSymbolicConstraints:

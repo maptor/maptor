@@ -135,9 +135,6 @@ States represent quantities that evolve according to differential equations, wit
     # Lower path bound only
     fuel_mass = phase.state("fuel", boundary=(0.0, None))
 
-    # Fixed path value (constant throughout)
-    constant_param = phase.state("param", boundary=5.0)
-
 **Complete Constraint Combinations:**
 
 .. code-block:: python
@@ -471,8 +468,11 @@ Optimize design parameters that remain constant throughout the mission:
     # Lower bounded only
     min_thrust = problem.parameter("min_thrust", boundary=(1000.0, None))
 
-    # Fixed parameter value
-    gravity_constant = problem.parameter("gravity", boundary=9.81)
+    # Fixed parameter value - numeric constant
+    gravity_constant = problem.parameter("gravity", fixed=9.81)
+
+    # Fixed parameter value - symbolic relationship
+    mass2 = problem.parameter("mass2", fixed=mass1 * 2.0)
 
 **Parameters in Dynamics and Constraints:**
 

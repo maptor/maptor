@@ -457,7 +457,7 @@ class TestErrorHandlingAndFailures:
         # Missing dynamics, mesh, and objective
 
         # Should be caught by solve_fixed_mesh validation
-        with pytest.raises((ValueError, ConfigurationError)):
+        with pytest.raises(ConfigurationError):
             mtor.solve_fixed_mesh(problem)
 
     def test_invalid_solver_options(self):

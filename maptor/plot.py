@@ -103,11 +103,11 @@ def _plot_single_phase(
             figures_created.append(fig)
 
         for fig in figures_created:
-            plt.figure(fig.number)
+            plt.figure(fig.number)  # type: ignore[attr-defined]
             plt.show(block=False)
 
         if figures_created:
-            plt.figure(figures_created[-1].number)
+            plt.figure(figures_created[-1].number)  # type: ignore[attr-defined]
             plt.show()
 
 
@@ -181,11 +181,11 @@ def _plot_multiphase_default(
             figures_created.append(fig)
 
     for fig in figures_created:
-        plt.figure(fig.number)
+        plt.figure(fig.number)  # type: ignore[attr-defined]
         plt.show(block=False)
 
     if figures_created:
-        plt.figure(figures_created[-1].number)
+        plt.figure(figures_created[-1].number)  # type: ignore[attr-defined]
         plt.show()
 
 

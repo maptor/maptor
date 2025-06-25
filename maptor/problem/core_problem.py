@@ -17,7 +17,7 @@ from .constraints_problem import (
     _get_cross_phase_event_constraints_function,
     _get_phase_path_constraints_function,
 )
-from .state import ConstraintInput, MultiPhaseVariableState
+from .state import BoundaryInput, ConstraintInput, FixedInput, MultiPhaseVariableState
 from .variables_problem import StateVariableImpl, TimeVariableImpl
 
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def _validate_phase_exists(phases: dict[PhaseID, Any], phase_id: PhaseID) -> None:
     if phase_id not in phases:
-        raise ValueError(f"Phase {phase_id} does not exist")
+        raise ConfigurationError(f"Phase {phase_id} does not exist")
 
 
 def _validate_constraint_inputs(name: str, boundary: ConstraintInput, context: str) -> None:
@@ -46,7 +46,7 @@ def _validate_constraint_expressions_not_empty(
     constraint_expressions: tuple, phase_id: PhaseID, constraint_type: str
 ) -> None:
     if not constraint_expressions:
-        raise ValueError(
+        raise ConfigurationError(
             f"Phase {phase_id} {constraint_type}_constraints() requires at least one constraint expression"
         )
 
@@ -59,14 +59,18 @@ def _process_symbolic_time_constraints(
             phase_def.sym_time_initial is None
             or phase_def.t0_constraint.symbolic_expression is None
         ):
-            raise ValueError(f"Phase {phase_id} has an undefined symbolic time initial expression.")
+            raise ConfigurationError(
+                f"Phase {phase_id} has an undefined symbolic time initial expression."
+            )
         constraint_expr = phase_def.sym_time_initial - phase_def.t0_constraint.symbolic_expression
         cross_phase_constraints.append(constraint_expr)
         logger.debug(f"Added automatic time initial constraint for phase {phase_id}")
 
     if phase_def.tf_constraint.is_symbolic():
         if phase_def.sym_time_final is None or phase_def.tf_constraint.symbolic_expression is None:
-            raise ValueError(f"Phase {phase_id} has an undefined symbolic time final expression.")
+            raise ConfigurationError(
+                f"Phase {phase_id} has an undefined symbolic time final expression."
+            )
         constraint_expr = phase_def.sym_time_final - phase_def.tf_constraint.symbolic_expression
         cross_phase_constraints.append(constraint_expr)
         logger.debug(f"Added automatic time final constraint for phase {phase_id}")
@@ -116,6 +120,20 @@ def _process_symbolic_state_constraints(
         )
 
 
+def _process_symbolic_parameter_constraints(
+    multiphase_state: MultiPhaseVariableState, cross_phase_constraints: list[ca.MX]
+) -> None:
+    static_params = multiphase_state.static_parameters
+    for param_name, _, symbolic_expr in static_params.symbolic_boundary_constraints:
+        param_index = static_params.parameter_name_to_index[param_name]
+        param_symbols = static_params.get_ordered_parameter_symbols()
+        param_symbol = param_symbols[param_index]
+
+        constraint_expr = param_symbol - symbolic_expr
+        cross_phase_constraints.append(constraint_expr)
+        logger.debug(f"Added automatic parameter constraint for '{param_name}'")
+
+
 def _validate_phase_requirements(phases: dict[PhaseID, Any]) -> None:
     if not phases:
         raise ConfigurationError("Problem must have at least one phase defined")
@@ -132,13 +150,15 @@ def _validate_phase_requirements(phases: dict[PhaseID, Any]) -> None:
 
 
 def _process_symbolic_constraints_for_all_phases(
-    phases: dict[PhaseID, Any], cross_phase_constraints: list[ca.MX]
+    multiphase_state: MultiPhaseVariableState, cross_phase_constraints: list[ca.MX]
 ) -> None:
     logger.debug("Processing symbolic boundary constraints for automatic cross-phase linking")
 
-    for phase_id, phase_def in phases.items():
+    for phase_id, phase_def in multiphase_state.phases.items():
         _process_symbolic_time_constraints(phase_def, phase_id, cross_phase_constraints)
         _process_symbolic_state_constraints(phase_def, phase_id, cross_phase_constraints)
+
+    _process_symbolic_parameter_constraints(multiphase_state, cross_phase_constraints)
 
 
 def _build_all_phase_functions(multiphase_state: MultiPhaseVariableState) -> None:
@@ -303,7 +323,7 @@ class Phase:
         name: str,
         initial: ConstraintInput = None,
         final: ConstraintInput = None,
-        boundary: ConstraintInput = None,
+        boundary: BoundaryInput = None,
     ) -> StateVariableImpl:
         """
         Define a state variable with comprehensive constraint specification.
@@ -334,7 +354,6 @@ class Phase:
 
             boundary: Path constraint applied throughout trajectory:
 
-                - float: State equals this value at all times
                 - (lower, upper): State bounds throughout (e.g., (0, 1000))
                 - (None, upper): Upper path bound only (e.g., (None, 500))
                 - (lower, None): Lower path bound only (e.g., (0, None))
@@ -348,35 +367,35 @@ class Phase:
 
                 >>> altitude = phase.state("altitude", initial=0.0, final=1000.0)
 
-            Ranges:
+                Ranges:
 
-            >>> position = phase.state("position", initial=(0, 5), final=(95, 105))
+                >>> position = phase.state("position", initial=(0, 5), final=(95, 105))
 
-            Single-sided bounds:
+                Single-sided bounds:
 
-            >>> velocity = phase.state("velocity", initial=0, final=(None, 200))
+                >>> velocity = phase.state("velocity", initial=0, final=(None, 200))
 
-            Path bounds:
+                Path bounds:
 
-            >>> mass = phase.state("mass", boundary=(100, 1000))
+                >>> mass = phase.state("mass", boundary=(100, 1000))
 
-            All constraint types:
+                All constraint types:
 
-            >>> state = phase.state("x", initial=(0, 10), final=(90, 110), boundary=(0, None))
+                >>> state = phase.state("x", initial=(0, 10), final=(90, 110), boundary=(0, None))
 
-            Symbolic linking:
+                Symbolic linking:
 
-            >>> h2 = phase2.state("altitude", initial=h1.final)
+                >>> h2 = phase2.state("altitude", initial=h1.final)
 
-            Unconstrained:
+                Unconstrained:
 
-            >>> free_state = phase.state("free_variable")
+                >>> free_state = phase.state("free_variable")
         """
         return variables_problem._create_phase_state_variable(
             self._phase_def, name, initial, final, boundary
         )
 
-    def control(self, name: str, boundary: ConstraintInput = None) -> ca.MX:
+    def control(self, name: str, boundary: BoundaryInput = None) -> ca.MX:
         """
         Define a control variable with comprehensive bound specification.
 
@@ -386,9 +405,8 @@ class Phase:
 
         Args:
             name: Unique control variable name within this phase
-            boundary: Control bounds with full constraint syntax:
+            boundary: Control bounds with constraint syntax:
 
-                - float: Fixed control value (e.g., 100.0)
                 - (lower, upper): Symmetric/asymmetric bounds (e.g., (-50, 100))
                 - (None, upper): Upper bound only (e.g., (None, 1000))
                 - (lower, None): Lower bound only (e.g., (0, None))
@@ -406,10 +424,6 @@ class Phase:
 
             >>> power = phase.control("power", boundary=(0, None))
             >>> brake = phase.control("brake", boundary=(None, 100))
-
-            Fixed value:
-
-            >>> constant = phase.control("thrust", boundary=1500)
 
             Unconstrained:
 
@@ -829,7 +843,7 @@ class Problem:
             Phase: Phase object for defining variables, dynamics, and constraints
 
         Raises:
-            ValueError: If phase_id already exists
+            ConfigurationError: If phase_id already exists
 
         Examples:
             Single phase problem:
@@ -862,12 +876,14 @@ class Problem:
             >>> descent_phase = problem.set_phase(3)
         """
         if phase_id in self._multiphase_state.phases:
-            raise ValueError(f"Phase {phase_id} already exists")
+            raise ConfigurationError(f"Phase {phase_id} already exists")
 
         logger.debug("Adding phase %d to problem '%s'", phase_id, self.name)
         return Phase(self, phase_id)
 
-    def parameter(self, name: str, boundary: ConstraintInput = None) -> ca.MX:
+    def parameter(
+        self, name: str, boundary: BoundaryInput = None, fixed: FixedInput = None
+    ) -> ca.MX:
         """
         Define a static parameter for design optimization with exhaustive constraint syntax.
 
@@ -877,16 +893,24 @@ class Problem:
 
         Args:
             name: Unique parameter name
-            boundary: Parameter constraint with full syntax:
+            boundary: Parameter optimization bounds:
 
-                - float: Fixed parameter value (e.g., 1000.0)
                 - (lower, upper): Bounded parameter range (e.g., (100, 500))
                 - (None, upper): Upper bounded only (e.g., (None, 1000))
                 - (lower, None): Lower bounded only (e.g., (0, None))
                 - None: Unconstrained parameter
 
+            fixed: Fixed parameter value:
+
+                - float: Fixed constant (e.g., 9.81)
+                - ca.MX: Symbolic relationship (e.g., mass1 * 2.0)
+                - None: Not fixed (use boundary for optimization)
+
         Returns:
             ca.MX: Parameter variable for use across all phases
+
+        Raises:
+            ConfigurationError: If both boundary and fixed are specified
 
         Examples:
             Bounded parameter:
@@ -900,7 +924,11 @@ class Problem:
 
             Fixed parameter:
 
-            >>> gravity = problem.parameter("gravity", boundary=9.81)
+            >>> gravity = problem.parameter("gravity", fixed=9.81)
+
+            Fixed relationship:
+
+            >>> mass2 = problem.parameter("mass2", fixed=mass1 * 2.0)
 
             Unconstrained:
 
@@ -909,7 +937,7 @@ class Problem:
         _validate_constraint_inputs(name, boundary, "Parameter")
 
         param_var = variables_problem._create_static_parameter(
-            self._multiphase_state.static_parameters, name, boundary
+            self._multiphase_state.static_parameters, name, boundary, fixed
         )
         logger.debug("Static parameter created: name='%s'", name)
         return param_var
@@ -1015,7 +1043,7 @@ class Problem:
         phase_def = self._multiphase_state.phases[phase_id]
 
         if phase_def._dynamics_function is None:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Phase {phase_id} dynamics function not built - call validate_multiphase_configuration() first"
             )
 
@@ -1026,7 +1054,7 @@ class Problem:
         phase_def = self._multiphase_state.phases[phase_id]
 
         if phase_def._numerical_dynamics_function is None:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Phase {phase_id} numerical dynamics function not built - call validate_multiphase_configuration() first"
             )
 
@@ -1034,7 +1062,7 @@ class Problem:
 
     def _get_objective_function(self) -> Any:
         if self._multiphase_state._objective_function is None:
-            raise ValueError(
+            raise ConfigurationError(
                 "Multiphase objective function not built - call validate_multiphase_configuration() first"
             )
 
@@ -1055,13 +1083,13 @@ class Problem:
 
     def validate_multiphase_configuration(self) -> None:
         _process_symbolic_constraints_for_all_phases(
-            self._multiphase_state.phases, self._multiphase_state.cross_phase_constraints
+            self._multiphase_state, self._multiphase_state.cross_phase_constraints
         )
 
         _validate_phase_requirements(self._multiphase_state.phases)
 
         if self._multiphase_state.objective_expression is None:
-            raise ValueError("Problem must have objective function defined")
+            raise ConfigurationError("Problem must have objective function defined")
 
         _build_all_phase_functions(self._multiphase_state)
 

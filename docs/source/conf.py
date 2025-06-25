@@ -15,7 +15,7 @@ try:
     version = maptor.__version__
     release = version
 except ImportError:
-    version = "0.1.0"
+    version = "0.2.0"
     release = version
 
 extensions = [

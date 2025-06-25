@@ -7,7 +7,7 @@ from typing import TypeAlias, cast
 
 import casadi as ca
 
-from ..exceptions import DataIntegrityError
+from ..exceptions import ConfigurationError, DataIntegrityError
 from ..input_validation import _validate_constraint_input_format, _validate_string_not_empty
 from ..mtor_types import FloatArray, PhaseID
 from ..utils.constants import LARGE_VALUE
@@ -16,6 +16,9 @@ from ..utils.constants import LARGE_VALUE
 ConstraintInput: TypeAlias = (
     float | int | tuple[float | int | None, float | int | None] | None | ca.MX
 )
+
+BoundaryInput: TypeAlias = tuple[float | int | None, float | int | None] | None
+FixedInput: TypeAlias = float | int | ca.MX | None
 
 
 def _register_variable_name(
@@ -77,7 +80,7 @@ def _create_variable_info_with_rollback(
 def _collect_symbolic_constraint(
     name: str,
     constraint_type: str,
-    constraint: _BoundaryConstraint | None,
+    constraint: _EndpointConstraint | None,
     symbolic_constraints: list[tuple[str, str, ca.MX]],
 ) -> None:
     if constraint is not None and constraint.is_symbolic():
@@ -86,7 +89,7 @@ def _collect_symbolic_constraint(
         )
 
 
-class _BoundaryConstraint:
+class _EndpointConstraint:
     def __init__(self, constraint_input: ConstraintInput = None) -> None:
         _validate_constraint_input_format(constraint_input, "boundary constraint")
 
@@ -122,17 +125,95 @@ class _BoundaryConstraint:
 
     def __repr__(self) -> str:
         if self.symbolic_expression is not None:
-            return f"_BoundaryConstraint(symbolic={self.symbolic_expression})"
+            return f"_EndpointConstraint(symbolic={self.symbolic_expression})"
         elif self.equals is not None:
-            return f"_BoundaryConstraint(equals={self.equals})"
+            return f"_EndpointConstraint(equals={self.equals})"
         elif self.lower is not None and self.upper is not None:
-            return f"_BoundaryConstraint(lower={self.lower}, upper={self.upper})"
+            return f"_EndpointConstraint(lower={self.lower}, upper={self.upper})"
         elif self.lower is not None:
-            return f"_BoundaryConstraint(lower={self.lower})"
+            return f"_EndpointConstraint(lower={self.lower})"
         elif self.upper is not None:
-            return f"_BoundaryConstraint(upper={self.upper})"
+            return f"_EndpointConstraint(upper={self.upper})"
         else:
-            return "_BoundaryConstraint(no constraint)"
+            return "_EndpointConstraint(no constraint)"
+
+
+# maptor/problem/state.py - Add new classes, keep original _EndpointConstraint for initial/final
+
+
+class _RangeBoundaryConstraint:
+    def __init__(self, boundary_input: BoundaryInput = None) -> None:
+        self.lower: float | None = None
+        self.upper: float | None = None
+
+        if boundary_input is not None:
+            if not isinstance(boundary_input, tuple):
+                raise ConfigurationError(
+                    "boundary= argument only accepts range tuples like (lower, upper)"
+                )
+            self._process_boundary_input(boundary_input)
+
+    def _process_boundary_input(self, boundary_input: tuple) -> None:
+        lower, upper = _process_tuple_constraint_input(boundary_input)
+
+        # Add range validation here
+        if lower is not None and upper is not None and lower > upper:
+            raise ConfigurationError(
+                f"Invalid range: lower bound ({lower}) > upper bound ({upper})"
+            )
+
+        self.lower, self.upper = lower, upper
+
+    def has_constraint(self) -> bool:
+        return self.lower is not None or self.upper is not None
+
+    def is_symbolic(self) -> bool:
+        return False
+
+    def __repr__(self) -> str:
+        if self.lower is not None and self.upper is not None:
+            return f"_RangeBoundaryConstraint(lower={self.lower}, upper={self.upper})"
+        elif self.lower is not None:
+            return f"_RangeBoundaryConstraint(lower={self.lower})"
+        elif self.upper is not None:
+            return f"_RangeBoundaryConstraint(upper={self.upper})"
+        else:
+            return "_RangeBoundaryConstraint(no constraint)"
+
+
+class _FixedConstraint:
+    # Handles fixed parameter values - equality and symbolic expressions only.
+
+    def __init__(self, fixed_input: FixedInput = None) -> None:
+        self.equals: float | None = None
+        self.symbolic_expression: ca.MX | None = None
+
+        if fixed_input is not None:
+            self._process_fixed_input(fixed_input)
+
+    def _process_fixed_input(self, fixed_input: FixedInput) -> None:
+        if isinstance(fixed_input, ca.MX):
+            self.symbolic_expression = fixed_input
+        elif isinstance(fixed_input, int | float):
+            self.equals = float(fixed_input)
+        else:
+            raise ConfigurationError(
+                f"fixed= argument only accepts numeric values or symbolic expressions, got {type(fixed_input)}"
+            )
+
+    def has_constraint(self) -> bool:
+        return self.equals is not None or self.symbolic_expression is not None
+
+    def is_symbolic(self) -> bool:
+        return self.symbolic_expression is not None
+
+    def __repr__(self) -> str:
+        if self.symbolic_expression is not None:
+            return f"_FixedConstraint(symbolic={self.symbolic_expression})"
+        elif self.equals is not None:
+            return f"_FixedConstraint(equals={self.equals})"
+        else:
+            return "_FixedConstraint(no constraint)"
 
 
 @dataclass
@@ -140,9 +221,10 @@ class _VariableInfo:
     symbol: ca.MX
     initial_symbol: ca.MX | None = None
     final_symbol: ca.MX | None = None
-    initial_constraint: _BoundaryConstraint | None = None
-    final_constraint: _BoundaryConstraint | None = None
-    boundary_constraint: _BoundaryConstraint | None = None
+    initial_constraint: _EndpointConstraint | None = None
+    final_constraint: _EndpointConstraint | None = None
+    boundary_constraint: _RangeBoundaryConstraint | None = None
+    fixed_constraint: _FixedConstraint | None = None
     _target_list: list[_VariableInfo] | None = None
 
 
@@ -168,8 +250,8 @@ class PhaseDefinition:
     integral_symbols: list[ca.MX] = field(default_factory=list)
     num_integrals: int = 0
 
-    t0_constraint: _BoundaryConstraint = field(default_factory=lambda: _BoundaryConstraint(0.0))
-    tf_constraint: _BoundaryConstraint = field(default_factory=lambda: _BoundaryConstraint())
+    t0_constraint: _EndpointConstraint = field(default_factory=lambda: _EndpointConstraint(0.0))
+    tf_constraint: _EndpointConstraint = field(default_factory=lambda: _EndpointConstraint())
 
     collocation_points_per_interval: list[int] = field(default_factory=list)
     global_normalized_mesh_nodes: FloatArray | None = None
@@ -199,9 +281,9 @@ class PhaseDefinition:
         symbol: ca.MX,
         initial_symbol: ca.MX | None,
         final_symbol: ca.MX | None,
-        initial_constraint: _BoundaryConstraint | None,
-        final_constraint: _BoundaryConstraint | None,
-        boundary_constraint: _BoundaryConstraint | None,
+        initial_constraint: _EndpointConstraint | None,
+        final_constraint: _EndpointConstraint | None,
+        boundary_constraint: _RangeBoundaryConstraint | None,
     ) -> _VariableInfo:
         var_info = _VariableInfo(
             symbol=symbol,
@@ -215,14 +297,10 @@ class PhaseDefinition:
         return var_info
 
     def _create_control_variable_info(
-        self, symbol: ca.MX, boundary_constraint: _BoundaryConstraint | None
+        self, symbol: ca.MX, boundary_constraint: _RangeBoundaryConstraint | None
     ) -> _VariableInfo:
         var_info = _VariableInfo(
             symbol=symbol,
-            initial_symbol=None,
-            final_symbol=None,
-            initial_constraint=None,
-            final_constraint=None,
             boundary_constraint=boundary_constraint,
         )
         var_info._target_list = self.control_info
@@ -231,18 +309,14 @@ class PhaseDefinition:
     def _collect_state_symbolic_constraints(
         self,
         name: str,
-        initial_constraint: _BoundaryConstraint | None,
-        final_constraint: _BoundaryConstraint | None,
-        boundary_constraint: _BoundaryConstraint | None,
+        initial_constraint: _EndpointConstraint | None,
+        final_constraint: _EndpointConstraint | None,
     ) -> None:
         _collect_symbolic_constraint(
             name, "initial", initial_constraint, self.symbolic_boundary_constraints
         )
         _collect_symbolic_constraint(
             name, "final", final_constraint, self.symbolic_boundary_constraints
-        )
-        _collect_symbolic_constraint(
-            name, "boundary", boundary_constraint, self.symbolic_boundary_constraints
         )
 
     def add_state(
@@ -251,9 +325,9 @@ class PhaseDefinition:
         symbol: ca.MX,
         initial_symbol: ca.MX | None = None,
         final_symbol: ca.MX | None = None,
-        initial_constraint: _BoundaryConstraint | None = None,
-        final_constraint: _BoundaryConstraint | None = None,
-        boundary_constraint: _BoundaryConstraint | None = None,
+        initial_constraint: _EndpointConstraint | None = None,
+        final_constraint: _EndpointConstraint | None = None,
+        boundary_constraint: _RangeBoundaryConstraint | None = None,
     ) -> None:
         _validate_string_not_empty(name, "State variable name")
 
@@ -268,9 +342,7 @@ class PhaseDefinition:
                     final_constraint,
                     boundary_constraint,
                 )
-                self._collect_state_symbolic_constraints(
-                    name, initial_constraint, final_constraint, boundary_constraint
-                )
+                self._collect_state_symbolic_constraints(name, initial_constraint, final_constraint)
                 return var_info
 
             _create_variable_info_with_rollback(
@@ -282,7 +354,7 @@ class PhaseDefinition:
             )
 
     def add_control(
-        self, name: str, symbol: ca.MX, boundary_constraint: _BoundaryConstraint | None = None
+        self, name: str, symbol: ca.MX, boundary_constraint: _RangeBoundaryConstraint | None = None
     ) -> None:
         _validate_string_not_empty(name, "Control variable name")
 
@@ -331,7 +403,7 @@ class PhaseDefinition:
         return symbols
 
     def _get_time_bounds(
-        self, constraint: _BoundaryConstraint, constraint_type: str
+        self, constraint: _EndpointConstraint, constraint_type: str
     ) -> tuple[float, float]:
         if constraint.is_symbolic():
             return (-LARGE_VALUE, LARGE_VALUE)
@@ -355,31 +427,50 @@ class StaticParameterState:
     parameter_info: list[_VariableInfo] = field(default_factory=list)
     parameter_name_to_index: dict[str, int] = field(default_factory=dict)
     parameter_names: list[str] = field(default_factory=list)
+    symbolic_boundary_constraints: list[tuple[str, str, ca.MX]] = field(default_factory=list)
     _ordering_lock: threading.Lock = field(default_factory=threading.Lock)
 
     def _create_parameter_variable_info(
-        self, symbol: ca.MX, boundary_constraint: _BoundaryConstraint | None
+        self,
+        symbol: ca.MX,
+        boundary_constraint: _RangeBoundaryConstraint | None,
+        fixed_constraint: _FixedConstraint | None,
     ) -> _VariableInfo:
         var_info = _VariableInfo(
             symbol=symbol,
-            initial_symbol=None,
-            final_symbol=None,
-            initial_constraint=None,
-            final_constraint=None,
             boundary_constraint=boundary_constraint,
+            fixed_constraint=fixed_constraint,
         )
         var_info._target_list = self.parameter_info
         return var_info
 
+    def _collect_parameter_symbolic_constraints(
+        self,
+        name: str,
+        fixed_constraint: _FixedConstraint | None,
+    ) -> None:
+        if fixed_constraint is not None and fixed_constraint.is_symbolic():
+            self.symbolic_boundary_constraints.append(
+                (name, "fixed", cast(ca.MX, fixed_constraint.symbolic_expression))
+            )
+
     def add_parameter(
-        self, name: str, symbol: ca.MX, boundary_constraint: _BoundaryConstraint | None = None
+        self,
+        name: str,
+        symbol: ca.MX,
+        boundary_constraint: _RangeBoundaryConstraint | None = None,
+        fixed_constraint: _FixedConstraint | None = None,
     ) -> None:
         _validate_string_not_empty(name, "Parameter name")
 
         with self._ordering_lock:
 
             def create_parameter_info():
-                return self._create_parameter_variable_info(symbol, boundary_constraint)
+                var_info = self._create_parameter_variable_info(
+                    symbol, boundary_constraint, fixed_constraint
+                )
+                self._collect_parameter_symbolic_constraints(name, fixed_constraint)
+                return var_info
 
             _create_variable_info_with_rollback(
                 name,

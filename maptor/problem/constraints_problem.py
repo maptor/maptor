@@ -5,7 +5,13 @@ from collections.abc import Callable
 import casadi as ca
 
 from ..mtor_types import Constraint, PhaseID
-from .state import MultiPhaseVariableState, PhaseDefinition, _BoundaryConstraint
+from .state import (
+    MultiPhaseVariableState,
+    PhaseDefinition,
+    _EndpointConstraint,
+    _FixedConstraint,
+    _RangeBoundaryConstraint,
+)
 
 
 def _add_path_constraint(phase_def: PhaseDefinition, constraint_expr: ca.MX | float | int) -> None:
@@ -58,7 +64,7 @@ def _symbolic_constraint_to_constraint(expr: ca.MX) -> Constraint:
 
 
 def _boundary_constraint_to_constraints(
-    boundary_constraint: _BoundaryConstraint, variable_expression: ca.MX
+    boundary_constraint: _EndpointConstraint, variable_expression: ca.MX
 ) -> list[Constraint]:
     constraints: list[Constraint] = []
 
@@ -83,35 +89,93 @@ def _map_symbol_to_vector_element(
     return vector if vector_length == 1 else vector[index]
 
 
-def _process_boundary_constraints(
-    boundary_constraints: list[_BoundaryConstraint | None],
-    variables_vec: ca.MX,
+def _process_state_boundary_constraints(
+    state_boundary_constraints: list[_RangeBoundaryConstraint | None],  # Updated type
+    states_vec: ca.MX,
     result: list[Constraint],
 ) -> None:
-    for i, boundary_constraint in enumerate(boundary_constraints):
+    for i, boundary_constraint in enumerate(state_boundary_constraints):
         if boundary_constraint is None or not boundary_constraint.has_constraint():
             continue
 
         variable_expr = _map_symbol_to_vector_element(
-            variables_vec, variables_vec, i, len(boundary_constraints)
+            states_vec, states_vec, i, len(state_boundary_constraints)
         )
-        result.extend(_boundary_constraint_to_constraints(boundary_constraint, variable_expr))
-
-
-def _process_state_boundary_constraints(
-    state_boundary_constraints: list[_BoundaryConstraint | None],
-    states_vec: ca.MX,
-    result: list[Constraint],
-) -> None:
-    _process_boundary_constraints(state_boundary_constraints, states_vec, result)
+        result.extend(_range_boundary_constraint_to_constraints(boundary_constraint, variable_expr))
 
 
 def _process_control_boundary_constraints(
-    control_boundary_constraints: list[_BoundaryConstraint | None],
+    control_boundary_constraints: list[_RangeBoundaryConstraint | None],
     controls_vec: ca.MX,
     result: list[Constraint],
 ) -> None:
-    _process_boundary_constraints(control_boundary_constraints, controls_vec, result)
+    for i, boundary_constraint in enumerate(control_boundary_constraints):
+        if boundary_constraint is None or not boundary_constraint.has_constraint():
+            continue
+
+        variable_expr = _map_symbol_to_vector_element(
+            controls_vec, controls_vec, i, len(control_boundary_constraints)
+        )
+        result.extend(_range_boundary_constraint_to_constraints(boundary_constraint, variable_expr))
+
+
+def _range_boundary_constraint_to_constraints(
+    boundary_constraint: _RangeBoundaryConstraint, variable_expression: ca.MX
+) -> list[Constraint]:
+    """Convert range boundary constraint to optimization constraints."""
+    constraints: list[Constraint] = []
+
+    if boundary_constraint.lower is not None:
+        constraints.append(Constraint(val=variable_expression, min_val=boundary_constraint.lower))
+    if boundary_constraint.upper is not None:
+        constraints.append(Constraint(val=variable_expression, max_val=boundary_constraint.upper))
+
+    return constraints
+
+
+def _fixed_constraint_to_constraints(
+    fixed_constraint: _FixedConstraint, variable_expression: ca.MX
+) -> list[Constraint]:
+    """Convert fixed constraint to optimization constraints."""
+    if fixed_constraint.equals is not None:
+        return [Constraint(val=variable_expression, equals=fixed_constraint.equals)]
+    return []
+
+
+def _process_static_parameter_constraints(
+    multiphase_state: MultiPhaseVariableState,
+    static_parameters_vec: ca.MX | None,
+    result: list[Constraint],
+) -> None:
+    if static_parameters_vec is None:
+        return
+
+    static_params = multiphase_state.static_parameters
+    num_params = len(static_params.parameter_info)
+
+    for i, param_info in enumerate(static_params.parameter_info):
+        param_expr = _map_symbol_to_vector_element(
+            static_parameters_vec, static_parameters_vec, i, num_params
+        )
+
+        # Handle range boundary constraints
+        if (
+            param_info.boundary_constraint is not None
+            and param_info.boundary_constraint.has_constraint()
+        ):
+            result.extend(
+                _range_boundary_constraint_to_constraints(
+                    param_info.boundary_constraint, param_expr
+                )
+            )
+
+        # Handle fixed constraints (non-symbolic ones)
+        if (
+            param_info.fixed_constraint is not None
+            and param_info.fixed_constraint.has_constraint()
+            and not param_info.fixed_constraint.is_symbolic()
+        ):
+            result.extend(_fixed_constraint_to_constraints(param_info.fixed_constraint, param_expr))
 
 
 def _process_symbolic_path_constraints(
@@ -413,7 +477,28 @@ def _check_has_cross_phase_constraints(multiphase_state: MultiPhaseVariableState
             has_phase_event_constraints = True
             break
 
-    return has_cross_phase_constraints or has_phase_event_constraints
+    has_static_param_constraints = False
+    for param_info in multiphase_state.static_parameters.parameter_info:
+        # Check range boundary constraints (never symbolic)
+        if (
+            param_info.boundary_constraint is not None
+            and param_info.boundary_constraint.has_constraint()
+        ):
+            has_static_param_constraints = True
+            break
+
+        # Check fixed constraints (can be symbolic or non-symbolic)
+        if (
+            param_info.fixed_constraint is not None
+            and param_info.fixed_constraint.has_constraint()
+            and not param_info.fixed_constraint.is_symbolic()
+        ):
+            has_static_param_constraints = True
+            break
+
+    return (
+        has_cross_phase_constraints or has_phase_event_constraints or has_static_param_constraints
+    )
 
 
 def _create_cross_phase_event_constraints(
@@ -433,6 +518,7 @@ def _create_cross_phase_event_constraints(
             multiphase_state, phase_endpoint_vectors, result
         )
         _process_phase_final_boundary_constraints(multiphase_state, phase_endpoint_vectors, result)
+        _process_static_parameter_constraints(multiphase_state, static_parameters_vec, result)
 
         return result
 

@@ -43,7 +43,7 @@ def _validate_error_arrays(all_fwd_errors: FloatArray, all_bwd_errors: FloatArra
 def _compute_max_error_value(all_fwd_errors: FloatArray, all_bwd_errors: FloatArray) -> float:
     max_fwd = np.max(all_fwd_errors) if all_fwd_errors.size > 0 else 0.0
     max_bwd = np.max(all_bwd_errors) if all_bwd_errors.size > 0 else 0.0
-    return max(max_fwd, max_bwd)
+    return float(max(max_fwd, max_bwd))
 
 
 def _calculate_merge_feasibility_from_errors(
@@ -169,7 +169,7 @@ def _create_control_evaluator(
     def _get_control_value(local_tau: float) -> FloatArray:
         if control_evaluator is None:
             return np.array([], dtype=np.float64)
-        return np.atleast_1d(control_evaluator(np.clip(local_tau, -1.0, 1.0)).squeeze())
+        return np.atleast_1d(control_evaluator(np.clip(local_tau, -1.0, 1.0)))
 
     return _get_control_value
 

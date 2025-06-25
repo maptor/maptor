@@ -164,7 +164,7 @@ If you use MAPTOR in academic research, please cite:
   author={Timothy, David},
   year={2025},
   url={https://github.com/maptor/maptor},
-  version={0.1.0}
+  version={0.2.0}
 }
 ```
 
