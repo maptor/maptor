@@ -260,6 +260,125 @@ Define how your system evolves over time using ordinary differential equations w
 
 You must provide dynamics for every state variable in your phase. The expressions can involve any combination of states, controls, time, parameters, and mathematical functions.
 
+Static Parameter Optimization
+-----------------------------
+
+Optimize design parameters that remain constant throughout the mission:
+
+**Basic Parameter Definition:**
+
+.. code-block:: python
+
+    # Unconstrained parameters
+    design_var = problem.parameter("design_variable")
+
+    # Bounded parameters
+    vehicle_mass = problem.parameter("mass", boundary=(100.0, 500.0))
+    wing_area = problem.parameter("wing_area", boundary=(10.0, 50.0))
+
+    # Upper bounded only
+    max_power = problem.parameter("power_limit", boundary=(None, 5000.0))
+
+    # Lower bounded only
+    min_thrust = problem.parameter("min_thrust", boundary=(1000.0, None))
+
+    # Fixed parameter value - numeric constant
+    gravity_constant = problem.parameter("gravity", fixed=9.81)
+
+    # Fixed parameter value - symbolic relationship
+    mass2 = problem.parameter("mass2", fixed=mass1 * 2.0)
+
+**Parameters in Dynamics and Constraints:**
+
+.. code-block:: python
+
+    # Use parameters in dynamics
+    phase.dynamics({
+        velocity: thrust / vehicle_mass - drag_coefficient * velocity**2,
+        altitude: velocity * ca.sin(flight_path_angle),
+        fuel_mass: -thrust / (specific_impulse * gravity_constant)
+    })
+
+    # Use parameters in constraints
+    phase.path_constraints(
+        thrust <= max_power / propulsion_efficiency,
+        lift_force <= 0.5 * air_density * velocity**2 * wing_area * max_cl
+    )
+
+    # Use parameters in objectives
+    total_cost = vehicle_mass * cost_per_kg + wing_area * manufacturing_cost
+    mission_performance = altitude.final + range.final
+    problem.minimize(total_cost - performance_weight * mission_performance)
+
+**Parameter Optimization Examples:**
+
+.. code-block:: python
+
+    # System design optimization
+    engine_thrust = problem.parameter("engine_thrust", boundary=(1000, 5000))
+    fuel_capacity = problem.parameter("fuel_tank", boundary=(100, 1000))
+    aerodynamic_efficiency = problem.parameter("l_over_d", boundary=(5, 20))
+
+    # Trajectory and design optimization
+    structural_mass = vehicle_mass - fuel_capacity
+    problem.minimize(
+        structural_mass +                    # Minimize vehicle mass
+        fuel_consumed +                      # Minimize fuel usage
+        0.1 * (t.final - target_time)**2    # Minimize time deviation
+    )
+
+**Parameter Initial Guesses:**
+
+For complex optimization problems with static parameters, providing good initial guesses significantly improves solver convergence and solution quality:
+
+.. code-block:: python
+
+    # Define parameters with bounds
+    vehicle_mass = problem.parameter("mass", boundary=(100, 500))
+    drag_coefficient = problem.parameter("drag", boundary=(0, 0.1))
+    wing_area = problem.parameter("wing_area", boundary=(10, 50))
+
+    # Set initial guesses using parameter names
+    problem.parameter_guess(
+        mass=300.0,        # Start optimization near middle of range
+        drag=0.05,         # Reasonable aerodynamic estimate
+        wing_area=25.0     # Initial design point
+    )
+
+**Advanced Parameter Guess Strategies:**
+
+.. code-block:: python
+
+    # Physics-based guess selection
+    thrust_to_weight = 1.2  # Desired T/W ratio
+    estimated_mass = 1000.0
+    required_thrust = thrust_to_weight * estimated_mass * 9.81
+
+    max_thrust = problem.parameter("max_thrust", boundary=(5000, 15000))
+    problem.parameter_guess(max_thrust=required_thrust)
+
+    # Engineering constraint-based guesses
+    max_heat_rate = problem.parameter("max_q_dot", boundary=(500, 1000))
+    safety_margin = 0.8  # Conservative initial design
+    problem.parameter_guess(max_q_dot=1000 * safety_margin)
+
+**Parameter Guess Validation:**
+
+.. code-block:: python
+
+    # The system validates parameter names exist
+    mass = problem.parameter("vehicle_mass", boundary=(100, 1000))
+
+    # This works - parameter exists
+    problem.parameter_guess(vehicle_mass=500.0)
+
+    # This raises ConfigurationError - parameter name doesn't exist
+    # problem.parameter_guess(mass=500.0)  # Wrong name
+
+    # Parameters without explicit guesses default to 0.0
+    wing_span = problem.parameter("wing_span", boundary=(5, 15))
+    # No guess provided - solver starts with 0.0
+
 Comprehensive Constraint System
 -------------------------------
 
@@ -445,125 +564,6 @@ Many optimal control problems involve accumulated quantities over the trajectory
         energy_cost <= battery_capacity,
         heat_generated <= thermal_limit
     )
-
-Static Parameter Optimization
------------------------------
-
-Optimize design parameters that remain constant throughout the mission:
-
-**Basic Parameter Definition:**
-
-.. code-block:: python
-
-    # Unconstrained parameters
-    design_var = problem.parameter("design_variable")
-
-    # Bounded parameters
-    vehicle_mass = problem.parameter("mass", boundary=(100.0, 500.0))
-    wing_area = problem.parameter("wing_area", boundary=(10.0, 50.0))
-
-    # Upper bounded only
-    max_power = problem.parameter("power_limit", boundary=(None, 5000.0))
-
-    # Lower bounded only
-    min_thrust = problem.parameter("min_thrust", boundary=(1000.0, None))
-
-    # Fixed parameter value - numeric constant
-    gravity_constant = problem.parameter("gravity", fixed=9.81)
-
-    # Fixed parameter value - symbolic relationship
-    mass2 = problem.parameter("mass2", fixed=mass1 * 2.0)
-
-**Parameters in Dynamics and Constraints:**
-
-.. code-block:: python
-
-    # Use parameters in dynamics
-    phase.dynamics({
-        velocity: thrust / vehicle_mass - drag_coefficient * velocity**2,
-        altitude: velocity * ca.sin(flight_path_angle),
-        fuel_mass: -thrust / (specific_impulse * gravity_constant)
-    })
-
-    # Use parameters in constraints
-    phase.path_constraints(
-        thrust <= max_power / propulsion_efficiency,
-        lift_force <= 0.5 * air_density * velocity**2 * wing_area * max_cl
-    )
-
-    # Use parameters in objectives
-    total_cost = vehicle_mass * cost_per_kg + wing_area * manufacturing_cost
-    mission_performance = altitude.final + range.final
-    problem.minimize(total_cost - performance_weight * mission_performance)
-
-**Parameter Optimization Examples:**
-
-.. code-block:: python
-
-    # Vehicle design optimization
-    engine_thrust = problem.parameter("engine_thrust", boundary=(1000, 5000))
-    fuel_capacity = problem.parameter("fuel_tank", boundary=(100, 1000))
-    aerodynamic_efficiency = problem.parameter("l_over_d", boundary=(5, 20))
-
-    # Trajectory and design co-optimization
-    structural_mass = vehicle_mass - fuel_capacity
-    problem.minimize(
-        structural_mass +                    # Minimize vehicle mass
-        fuel_consumed +                      # Minimize fuel usage
-        0.1 * (t.final - target_time)**2    # Minimize time deviation
-    )
-
-**Parameter Initial Guesses:**
-
-For complex optimization problems with static parameters, providing good initial guesses significantly improves solver convergence and solution quality:
-
-.. code-block:: python
-
-    # Define parameters with bounds
-    vehicle_mass = problem.parameter("mass", boundary=(100, 500))
-    drag_coefficient = problem.parameter("drag", boundary=(0, 0.1))
-    wing_area = problem.parameter("wing_area", boundary=(10, 50))
-
-    # Set initial guesses using parameter names
-    problem.parameter_guess(
-        mass=300.0,        # Start optimization near middle of range
-        drag=0.05,         # Reasonable aerodynamic estimate
-        wing_area=25.0     # Initial design point
-    )
-
-**Advanced Parameter Guess Strategies:**
-
-.. code-block:: python
-
-    # Physics-based guess selection
-    thrust_to_weight = 1.2  # Desired T/W ratio
-    estimated_mass = 1000.0
-    required_thrust = thrust_to_weight * estimated_mass * 9.81
-
-    max_thrust = problem.parameter("max_thrust", boundary=(5000, 15000))
-    problem.parameter_guess(max_thrust=required_thrust)
-
-    # Engineering constraint-based guesses
-    max_heat_rate = problem.parameter("max_q_dot", boundary=(500, 1000))
-    safety_margin = 0.8  # Conservative initial design
-    problem.parameter_guess(max_q_dot=1000 * safety_margin)
-
-**Parameter Guess Validation:**
-
-.. code-block:: python
-
-    # The system validates parameter names exist
-    mass = problem.parameter("vehicle_mass", boundary=(100, 1000))
-
-    # This works - parameter exists
-    problem.parameter_guess(vehicle_mass=500.0)
-
-    # This raises ConfigurationError - parameter name doesn't exist
-    # problem.parameter_guess(mass=500.0)  # Wrong name
-
-    # Parameters without explicit guesses default to 0.0
-    wing_span = problem.parameter("wing_span", boundary=(5, 15))
-    # No guess provided - solver starts with 0.0
 
 Objective Function Specification
 --------------------------------

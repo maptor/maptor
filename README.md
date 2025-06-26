@@ -12,32 +12,31 @@
 
 **Contact:** chendavidtimothy@gmail.com
 
-A Python framework for **trajectory optimization** using optimal control. MAPTOR solves problems involving the motion of vehicles, robots, spacecraft, and other dynamic systems through space and time using the Legendre-Gauss-Radau pseudospectral method and phs-adaptive mesh refinement.
+A Python framework for **trajectory and design optimization** using optimal control. MAPTOR simultaneously optimizes system parameters and trajectories for vehicles, robots, spacecraft, and other dynamic systems.
 
-## What is Trajectory Optimization?
+## When to Use MAPTOR
 
-Trajectory optimization finds the best path for a dynamic system to follow, considering:
-- **Physics**: System dynamics and constraints
-- **Objectives**: Minimize time, fuel, energy, or tracking error
-- **Constraints**: Safety limits, obstacle avoidance, boundary conditions
+**If you only need basic PATH planning** (geometry-focused problems), use path planning algorithms:
+- A*, Dijkstra, basic RRT, PRM
+- Fastest for obstacle avoidance without complex dynamics
 
-**Mathematical Foundation**: MAPTOR applies optimal control theory to transform continuous trajectory optimization problems into solvable nonlinear programming problems through spectral collocation methods.
+**If you need TRAJECTORY optimization** with simple constraints, faster methods exist:
+- iLQR (iterative Linear Quadratic Regulator)
+- ALTRO (Augmented Lagrangian Trajectory Optimizer)
+- Faster convergence for dynamics-heavy, constraint-light problems
 
-## Core Methodology
+**Use MAPTOR for complex DESIGN + TRAJECTORY problems:**
+- Multiple design parameters + trajectory optimization
+- Complex nonlinear path constraints (obstacle avoidance, state bounds)
+- Multiphase missions with automatic phase linking
+- When you need the full flexibility of direct transcription
 
-MAPTOR implements the **Legendre-Gauss-Radau pseudospectral method** with:
-
-- **Spectral accuracy**: Exponential convergence for smooth solutions
-- **Adaptive mesh refinement**: Automatic error control through phs-adaptive mesh refinement method
-- **Multiphase capability**: Complex missions with automatic phase linking
-- **Symbolic computation**: Built on CasADi for exact differentiation and optimization
-
-## Quick Start
+## Quick Start: Pure Trajectory Optimization
 
 ```python
 import maptor as mtor
 
-# Minimum-time trajectory: reach target with bounded control
+# Minimum time trajectory: reach target with bounded control
 problem = mtor.Problem("Minimum Time to Target")
 phase = problem.set_phase(1)
 
@@ -56,13 +55,100 @@ phase.mesh([8], [-1.0, 1.0])
 solution = mtor.solve_adaptive(problem)
 
 if solution.status["success"]:
-    print(f"Optimal time: {solution.status['objective']:.3f}")
+    print(f"Optimal time: {solution.status['objective']:.3f} seconds")
     solution.plot()
 ```
 
-## Problem Classes
+## Example: Simultaneous Design and Trajectory Optimization
+
+While the above shows basic trajectory optimization, MAPTOR also handles simultaneous design and trajectory optimization:
+
+```python
+import maptor as mtor
+
+
+# Engine sizing optimization with mass penalty
+problem = mtor.Problem("Engine Sizing Optimization")
+phase = problem.set_phase(1)
+
+# Design parameter: maximum engine thrust capability
+max_thrust = problem.parameter("max_thrust", boundary=(1000, 5000))
+
+# Physical parameters
+base_mass = 100.0  # kg (vehicle dry mass)
+engine_mass_factor = 0.05  # kg per Newton (engine specific mass)
+gravity = 9.81  # m/s²
+
+# Mission variables
+t = phase.time(initial=0.0)
+altitude = phase.state("altitude", initial=0.0, final=1000.0)
+velocity = phase.state("velocity", initial=0.0, final=0.0)
+thrust = phase.control("thrust", boundary=(0, None))
+
+# Engine cannot exceed design capability
+phase.path_constraints(thrust <= max_thrust)
+
+# Total vehicle mass increases with engine size
+total_mass = base_mass + max_thrust * engine_mass_factor
+
+# Vertical flight dynamics with gravity
+phase.dynamics({altitude: velocity, velocity: thrust / total_mass - gravity})
+
+# Objective: minimize mission time + engine mass penalty
+engine_mass_cost = max_thrust * engine_mass_factor * 0.1  # Cost per kg of engine
+problem.minimize(t.final + engine_mass_cost)
+
+# Mesh configuration
+phase.mesh([6], [-1.0, 1.0])
+
+
+phase.guess(terminal_time=50.0)
+
+# Solve with adaptive mesh refinement
+solution = mtor.solve_adaptive(problem)
+
+# Results
+if solution.status["success"]:
+    optimal_thrust = solution.parameters["values"][0]
+    engine_mass = optimal_thrust * engine_mass_factor
+    total_vehicle_mass = base_mass + engine_mass
+    mission_time = solution.status["objective"] - engine_mass * 0.1
+
+    print("Optimal Engine Design:")
+    print(f"  Max thrust capability: {optimal_thrust:.0f} N")
+    print(f"  Engine mass: {engine_mass:.1f} kg")
+    print(f"  Total vehicle mass: {total_vehicle_mass:.1f} kg")
+    print(f"  Mission time: {mission_time:.1f} seconds")
+    print(f"  Thrust-to-weight ratio: {optimal_thrust / (total_vehicle_mass * gravity):.2f}")
+
+    solution.plot()
+else:
+    print(f"Optimization failed: {solution.status['message']}")
+
+#Output
+#Optimal Engine Design:
+#  Max thrust capability: 3535 N
+#  Engine mass: 176.7 kg
+#  Total vehicle mass: 276.7 kg
+#  Mission time: 29.6 seconds
+#  Thrust-to-weight ratio: 1.30
+```
+
+**Example Applications**:
+- **Aerospace**: Optimize fuel capacity + ascent trajectory
+- **Robotics**: Optimize actuator sizing + motion planning
+- **Autonomous Vehicles**: Optimize battery capacity + route planning
 
 **Beyond Spatial Trajectories**: MAPTOR also handles abstract optimal control problems where "trajectory" refers to the evolution of any system state over time (chemical processes, financial optimization, resource allocation).
+
+## Core Methodology
+
+MAPTOR implements the **Legendre-Gauss-Radau pseudospectral method** with:
+
+- **Spectral accuracy**: Exponential convergence for smooth solutions
+- **Adaptive mesh refinement**: Automatic error control through phs-adaptive mesh refinement method
+- **Multiphase capability**: Complex missions with automatic phase linking
+- **Symbolic computation**: Built on CasADi for exact differentiation and optimization
 
 ## Installation
 
