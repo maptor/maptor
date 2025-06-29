@@ -126,6 +126,17 @@ def animate_manipulator_3dof(solution, save_filename="manipulator_3dof.mp4"):
     ax_main.tick_params(colors=COLORS["text_light"])
     ax_main.view_init(elev=10, azim=108)
 
+    ax_main.grid(True, alpha=0.3)
+    ax_main.xaxis.pane.fill = False
+    ax_main.yaxis.pane.fill = False
+    ax_main.zaxis.pane.fill = False
+    ax_main.xaxis.pane.set_edgecolor(COLORS["text_light"])
+    ax_main.yaxis.pane.set_edgecolor(COLORS["text_light"])
+    ax_main.zaxis.pane.set_edgecolor(COLORS["text_light"])
+    ax_main.xaxis.pane.set_alpha(0.1)
+    ax_main.yaxis.pane.set_alpha(0.1)
+    ax_main.zaxis.pane.set_alpha(0.1)
+
     (base_marker,) = ax_main.plot(
         [],
         [],
