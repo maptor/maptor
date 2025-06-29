@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "maptor"
-version = "0.2.0"
+version = "0.2.1"
 description = "Multiphase Adaptive Trajectory Optimizer"
 authors = [{name = "David Timothy", email = "chendavidtimothy@gmail.com"}]
 readme = "README.md"
@@ -93,7 +93,8 @@ ignore = [
     "S311",  # Pseudo-random generators not suitable for cryptographic purposes
     "S101", # Use assert statements (allow in tests)
     "RUF003",
-    "S603"
+    "S603",
+    "E741"
 ]
 
 # Per-file ignores

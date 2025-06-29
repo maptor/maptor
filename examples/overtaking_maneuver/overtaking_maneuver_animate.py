@@ -17,11 +17,11 @@ COLORS = {
     "primary_red_light": "#f87171",
     "background_dark": "#2d2d2d",
     "text_light": "#e5e7eb",
-    "agent_blue": "#3b82f6",
-    "obstacle_green": "#10b981",
-    "obstacle_orange": "#f59e0b",
+    "blue": "#3b82f6",
+    "green": "#10b981",
+    "orange": "#f59e0b",
     "road_markings": "#e5e7eb",
-    "lane_guides": "#6b7280",
+    "grey": "#6b7280",
 }
 
 
@@ -203,7 +203,7 @@ def _setup_and_run_animation(
     # Start/end markers
     ax.scatter(
         *overtaking_maneuver.AGENT_START,
-        c=COLORS["obstacle_green"],
+        c=COLORS["green"],
         s=200,
         marker="s",
         zorder=10,
@@ -212,7 +212,7 @@ def _setup_and_run_animation(
     )
     ax.scatter(
         *overtaking_maneuver.AGENT_END,
-        c=COLORS["agent_blue"],
+        c=COLORS["blue"],
         s=250,
         marker="*",
         zorder=10,
@@ -225,13 +225,13 @@ def _setup_and_run_animation(
     trail_frames = int(trail_length_seconds * fps)
 
     # Agent trail
-    (agent_trail,) = ax.plot([], [], color=COLORS["agent_blue"], alpha=1, linewidth=3, zorder=5)
+    (agent_trail,) = ax.plot([], [], color=COLORS["blue"], alpha=1, linewidth=3, zorder=5)
 
     # Obstacle trails
     (obstacle_1_trail,) = ax.plot(
         [],
         [],
-        color=COLORS["obstacle_green"],
+        color=COLORS["green"],
         alpha=0.6,
         linewidth=2,
         linestyle="--",
@@ -240,7 +240,7 @@ def _setup_and_run_animation(
     (obstacle_2_trail,) = ax.plot(
         [],
         [],
-        color=COLORS["obstacle_orange"],
+        color=COLORS["orange"],
         alpha=0.6,
         linewidth=2,
         linestyle="--",
@@ -250,7 +250,7 @@ def _setup_and_run_animation(
     # Initialize vehicles
     agent_vehicle = Polygon(
         [[0, 0], [0, 0], [0, 0], [0, 0]],
-        facecolor=COLORS["agent_blue"],
+        facecolor=COLORS["blue"],
         edgecolor=COLORS["text_light"],
         alpha=1,
         linewidth=2,
@@ -259,7 +259,7 @@ def _setup_and_run_animation(
 
     obstacle_1 = Polygon(
         [[0, 0], [0, 0], [0, 0], [0, 0]],
-        facecolor=COLORS["obstacle_green"],
+        facecolor=COLORS["green"],
         edgecolor=COLORS["text_light"],
         alpha=1,
         linewidth=2,
@@ -268,7 +268,7 @@ def _setup_and_run_animation(
 
     obstacle_2 = Polygon(
         [[0, 0], [0, 0], [0, 0], [0, 0]],
-        facecolor=COLORS["obstacle_orange"],
+        facecolor=COLORS["orange"],
         edgecolor=COLORS["text_light"],
         alpha=1,
         linewidth=2,

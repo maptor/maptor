@@ -20,9 +20,9 @@ COLORS = {
     "primary_red": "#991b1b",
     "background_dark": "#2d2d2d",
     "text_light": "#e5e7eb",
-    "agent_blue": "#3b82f6",
-    "obstacle_green": "#10b981",
-    "lane_guides": "#6b7280",
+    "blue": "#3b82f6",
+    "green": "#10b981",
+    "grey": "#6b7280",
 }
 
 
@@ -149,7 +149,7 @@ def animate_low_thrust_orbit_transfer(solution, save_filename="orbit_transfer.mp
     earth_x = RE * np.outer(np.cos(u), np.sin(v))
     earth_y = RE * np.outer(np.sin(u), np.sin(v))
     earth_z = RE * np.outer(np.ones(np.size(u)), np.cos(v))
-    ax.plot_surface(earth_x, earth_y, earth_z, color=COLORS["agent_blue"], alpha=0.8, zorder=1)
+    ax.plot_surface(earth_x, earth_y, earth_z, color=COLORS["blue"], alpha=0.8, zorder=1)
     ax.set_box_aspect([1, 1, 1])
 
     # Draw orbits
@@ -157,7 +157,7 @@ def animate_low_thrust_orbit_transfer(solution, save_filename="orbit_transfer.mp
         initial_orbit[:, 0],
         initial_orbit[:, 1],
         initial_orbit[:, 2],
-        color=COLORS["lane_guides"],
+        color=COLORS["grey"],
         alpha=0.4,
         linewidth=2,
         linestyle="--",
@@ -166,7 +166,7 @@ def animate_low_thrust_orbit_transfer(solution, save_filename="orbit_transfer.mp
         final_orbit[:, 0],
         final_orbit[:, 1],
         final_orbit[:, 2],
-        color=COLORS["obstacle_green"],
+        color=COLORS["green"],
         alpha=0.6,
         linewidth=3,
     )

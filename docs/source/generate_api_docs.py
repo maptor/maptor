@@ -3,11 +3,6 @@ from pathlib import Path
 
 
 def generate_api_docs():
-    """
-    Generate API documentation for PUBLIC interfaces only.
-
-    Only documents what's in maptor.__all__ - the official public API.
-    """
     # Determine project root (docs/source/ -> project_root)
     project_root = Path(__file__).resolve().parent.parent.parent
     sys.path.insert(0, str(project_root))
@@ -55,6 +50,11 @@ def generate_api_docs():
             "title": "Exceptions",
             "description": "Exception classes for error handling.",
             "modules": ["maptor.exceptions"],
+        },
+        "mechanics": {
+            "title": "Mechanics Utilities",
+            "description": "Optional convenience tools for symbolic mechanics derivation.",
+            "modules": ["maptor.mechanics"],
         },
     }
 

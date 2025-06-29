@@ -245,29 +245,6 @@ if __name__ == "__main__":
 
         anim = animate_dynamic_obstacle_avoidance(solution, str(output_file))
 
-        # Print dynamic behavior summary
-        v_x_traj = solution["longitudinal_velocity"]
-        v_y_traj = solution["lateral_velocity"]
-        r_traj = solution["yaw_rate"]
-
-        print("\nDynamic Behavior Summary:")
-        print(f"  Longitudinal velocity range: [{v_x_traj.min():.2f}, {v_x_traj.max():.2f}] m/s")
-        print(f"  Max lateral velocity: {abs(v_y_traj).max():.2f} m/s")
-        print(f"  Max yaw rate: {abs(r_traj).max():.2f} rad/s")
-        print(f"  Reverse motion: {'Yes' if v_x_traj.min() < 0 else 'No'}")
-        print(f"  Significant lateral motion: {'Yes' if abs(v_y_traj).max() > 1.0 else 'No'}")
-
-        # Calculate slip angles for analysis
-        slip_angles = []
-        for i in range(len(v_x_traj)):
-            if abs(v_x_traj[i]) > 0.1:
-                slip_angle = np.arctan2(v_y_traj[i], v_x_traj[i]) * 180 / np.pi
-                slip_angles.append(abs(slip_angle))
-
-        if slip_angles:
-            print(f"  Max slip angle: {max(slip_angles):.1f}°")
-            print(f"  Drifting behavior: {'Yes' if max(slip_angles) > 10 else 'No'}")
-
         plt.show()
     else:
         print("Cannot animate: solution failed")

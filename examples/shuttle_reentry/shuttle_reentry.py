@@ -91,12 +91,14 @@ problem.minimize(-theta.final)
 # Mesh and Guess
 # ============================================================================
 
-phase.mesh([8] * 3, np.linspace(-1.0, 1.0, 4))
+num_interval = 11
+degree = [3]
+final_mesh = degree * num_interval
+phase.mesh(final_mesh, np.linspace(-1.0, 1.0, num_interval + 1))
 
-# Initial guess
 states_guess = []
 controls_guess = []
-for N in [8] * 3:
+for N in final_mesh:
     t_norm = np.linspace(0, 1, N + 1)
     h_traj = 2.6 + (0.8 - 2.6) * t_norm
     phi_traj = np.zeros(N + 1)
