@@ -89,7 +89,7 @@ u_min = 0.5
 # Problem Setup
 # ============================================================================
 
-problem = mtor.Problem("Robust Street Overtaking")
+problem = mtor.Problem("Overtaking Maneuver")
 phase = problem.set_phase(1)
 
 
